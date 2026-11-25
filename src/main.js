@@ -292,7 +292,7 @@ function gravityStep(dt) { const g = V(); let top = null, ta = 0; GH.on = GH.ove
   if (P.state !== 'fly' && P.state !== 'descend' || gaze || dead || hole) { GH.a = 0; return; }
   for (const b of bodies) { const r = b.pos.clone().sub(P.pos), d = r.length(); if (d < b.R * .5) continue; let a = GN * (b.mass ||= bodyMass(b)) / (d * d); if (b.kind === 'blackhole' || b.kind === 'quasar') a /= Math.sqrt(Math.max(1e-9, 1 - b.R / d)); g.addScaledVector(r, a / d); if (a > ta) { ta = a; top = b; } }
   const a = g.length(); GH.a = a; GH.b = top; if (a < .05) return; GH.n.copy(g).divideScalar(a); const hold = Math.min(a, HOLDMAX); GH.hold = hold; GH.on = true;
-  if (a > HOLDMAX) { GH.over = true; P.drift.addScaledVector(GH.n, (a - HOLDMAX) * dt); }
+  if (a > HOLDMAX) { GH.over = true; P.drift.addScaledVector(GH.n, (a - HOLDMAX) * dt); if (P.drift.length() > C0 * .6) P.drift.setLength(C0 * .6); }
   GH.P = MASS * hold * C0; const e = GH.P * dt; GH.E += e; EN.total += e; st.spent = (st.spent || 0) + e; if (trip) trip.E += e;
   const k = Math.min(1.2, .1 + Math.log10(1 + hold / 8) / 8); GH.acc.copy(GH.n).negate().applyQuaternion(P.q.clone().invert()).multiplyScalar(k); }
 // ---------- escaping a gravity field too strong to hold
@@ -364,7 +364,8 @@ function simulate(dt) {
   const gv = 1 + (gamma - 1) / (1 + (gamma - 1) / 2); const bv = Math.sqrt(Math.max(0, 1 - 1 / (gv * gv))); shared.uBeta.value += (bv - shared.uBeta.value) * (1 - Math.exp(-dt * 6)); if (shared.uBeta.value < 1e-3 && bv < 1e-3) shared.uBeta.value = 0; shared.uBDir.value.copy(D); shared.uLogG.value = Math.log(gamma);
   for (const b of bodies) if (b.uFall) { const x = P.pos.distanceTo(b.pos) / b.R, k = Math.max(0, Math.min(1, (2.2 - x) / 1.17)), f = k * k * (3 - 2 * k); b.uFall.value = f; if (f > 0) shared.uBeta.value *= 1 - f; }
   gravityStep(dt);
-  P.drift.multiplyScalar(Math.exp(-dt * (GH.over ? .05 : .9))); const move = D.clone().multiplyScalar(P.w * dt).addScaledVector(P.drift, dt); if (P.state === 'fly' && !gaze) P.pos.add(move); else move.set(0, 0, 0);
+  P.drift.multiplyScalar(Math.exp(-dt * (GH.over ? .05 : .9))); const move = D.clone().multiplyScalar(P.w * dt).addScaledVector(P.drift, dt); if (P.state === 'fly' && !gaze) { // never pass through a body within one frame
+    const L = move.length(); if (L > 1) { const u = move.clone().divideScalar(L); for (const b of bodies) { const o = b.pos.clone().sub(P.pos), t = o.dot(u); if (t < 0 || t > L + b.R) continue; const q = o.clone().addScaledVector(u, -t).length(); if (q < b.R && o.length() > b.R) { const k = t - Math.sqrt(b.R * b.R - q * q); if (k < L) move.setLength(Math.max(0, k + (b.kind === 'blackhole' || b.kind === 'quasar' ? b.R * .002 : -b.R * .001))); } } } P.pos.add(move); } else move.set(0, 0, 0);
   // surfaces
   const heat = inAir ? Math.min(1, dens * Math.pow(P.w / 1500, 2) * 1.1) : 0; plasma.material.uniforms.uI.value += (heat - plasma.material.uniforms.uI.value) * dt * 3; plasma.visible = plasma.material.uniforms.uI.value > .01; if (heat > .3) shake = Math.max(shake, heat * .35);
   let star01 = 0, bend = 0; nearHole = null;
