@@ -26,6 +26,25 @@ export function makeHeight(P) {
         out += Math.min(L * rad * .22, P.craterMax) * (bowl + rim + peak) * Math.min(1, 200000 / L); } }
     return out;
   }
+  // one landform; px.. in metres
+  function form(f, h, mk, px, py, pz, s, minL, wx, wy) {
+    const L = f.L, A = f.amp;
+    switch (f.k) {
+      case 'volcano': { const x = px / L, y = py / L, z = pz / L, X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z); if (hash01(X, Y, Z, s) > .7) return h; const dx = x - X - .5, dy = y - Y - .5, dz = z - Z - .5, d = Math.sqrt(dx * dx + dy * dy + dz * dz) / (.28 + .2 * hash01(X, Y, Z, s + 1)); if (d > 1) return h; const g = 1 + .12 * noise(px / (L * .05), py / (L * .05), pz / (L * .05), s + 2) * Math.min(1, d * 4), cone = Math.pow(1 - d, 1.7) * g, cal = d < .13 ? (.13 - d) * 5.2 : 0; return h + A * mk * (cone - cal); }
+      case 'mesa': { const n = noise(px / L, py / L, pz / L, s) + .22 * noise(px / L * 4.1, py / L * 4.1, pz / L * 4.1, s + 1), t = ss(.06, .12, n) * .62 + ss(.22, .27, n) * .38; return h + A * mk * t; }
+      case 'columns': { const x = px / L, y = py / L, z = pz / L, X = Math.floor(x + .35 * noise(x * .7, y * .7, z * .7, s)), Y = Math.floor(y), Z = Math.floor(z + .35 * noise(z * .7, x * .7, y * .7, s + 1)); return h + A * mk * hash01(X, Y, Z, s + 2) * (.35 + .65 * Math.max(0, noise(px / (L * 14), py / (L * 14), pz / (L * 14), s + 3) + .4)); }
+      case 'pools': { const n = noise(px / L, py / L, pz / L, s) * .7 + noise(px / L * 2.7, py / L * 2.7, pz / L * 2.7, s + 1) * .25, k = n * 9, b = Math.floor(k), r = k - b; return h + A * mk * ((b + ss(.72, .96, r) + (r > .9 ? .12 : 0)) / 9); }
+      case 'swirl': { const n = noise(px / L + wx * 2, py / L, pz / L + wy * 2, s) + .4 * noise(px / L * 2.3, py / L * 2.3, pz / L * 2.3, s + 1); return h + A * mk * (Math.pow(.5 + .5 * Math.sin(n * 26), 2)); }
+      case 'needles': { const n = noise(px / L, py / L, pz / L, s), m = noise(px / L * 2.6, py / L * 2.6, pz / L * 2.6, s + 1); return h + A * mk * Math.pow(Math.max(0, n * 1.3 + m * .5), 2.2) * 2; }
+      case 'plates': { const n = noise(px / L * .6, py / L * .6, pz / L * .6, s), v = (px * .62 + py * .35 + pz * .7) / L + n * 2.4, r = v - Math.floor(v), c = Math.abs(noise(px / L * 1.4, py / L * 1.4, pz / L * 1.4, s + 1)); return h + A * mk * (r < .88 ? r / .88 : (1 - r) / .12) * ss(.02, .1, c); }
+      case 'rift': { const v = Math.abs(noise(px / L + wx, py / L, pz / L + wy, s)), w = 1 - ss(.0, .07, v), steps = Math.floor(w * 5) / 5 * .6 + w * .4; return h - A * mk * steps; }
+      case 'flats': { const t = Math.max(h * .04, h > 0 ? 12 : h); return h + (t - h) * mk * .97 + A * mk * noise(px / L, py / L, pz / L, s); }
+      case 'stardune': { const n1 = 1 - Math.abs(noise(px / L, py / L * .5, pz / L, s)) * 2, n2 = 1 - Math.abs(noise(px / L * .5 + 9, py / L, pz / L * 1.3, s + 1)) * 2; return h + A * mk * Math.pow(Math.max(0, n1, n2 * .8), 1.5); }
+      case 'karst': { const x = px / L, y = py / L, z = pz / L, X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z), hv = hash01(X, Y, Z, s); if (hv > .55) return h; const dx = x - X - .5, dy = y - Y - .5, dz = z - Z - .5, d = Math.sqrt(dx * dx + dy * dy + dz * dz) * (1 + .25 * noise(x * 5, y * 5, z * 5, s + 1)) / (.22 + .2 * hash01(X, Y, Z, s + 2)); return h + A * mk * (.4 + hv) * (1 - ss(.55, 1, d)); }
+      case 'honeycomb': { const x = px / L, y = py / L, z = pz / L, X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z); let a = 9, b = 9; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) { const ux = X + i + .2 + .6 * hash01(X + i, Y + j, Z + k, s) - x, uy = Y + j + .2 + .6 * hash01(X + i, Y + j, Z + k, s + 1) - y, uz = Z + k + .2 + .6 * hash01(X + i, Y + j, Z + k, s + 2) - z, d = ux * ux + uy * uy + uz * uz; if (d < a) { b = a; a = d; } else if (d < b) b = d; } const e = Math.sqrt(b) - Math.sqrt(a); return h + A * mk * (1 - ss(.03, .2, e)); }
+    }
+    return h;
+  }
   return function (x, y, z, minL = 2, out) {
     const px = x * R, py = y * R, pz = z * R; let f = P.contF, n = 0, a = .55;
     const wx = noise(x * f + 5, y * f, z * f, S + 1), wy = noise(x * f, y * f + 9, z * f, S + 2), wz = noise(x * f, y * f, z * f + 3, S + 3), W = P.warp;
@@ -43,6 +62,7 @@ export function makeHeight(P) {
     if (P.spire > 0 && minL < 800) { const l = 900, v = noise(px / l, py / l, pz / l, S + 120), m = ss(.28, .42, v + .1 * noise(px / 160, py / 160, pz / 160, S + 121)); h += m * P.spire * (.6 + rough) * land; }
     if (P.canyon > 0) { const l = P.ridgeL * 1.3, v = Math.abs(noise(px / l + wx * 2, py / l + wy * 2, pz / l, S + 130) + .18 * noise(px / l * 5, py / l * 5, pz / l * 5, S + 131)); h -= P.canyon * (1 - ss(.015, .09, v)) * land; }
     if (P.crack > 0) { const l = P.ridgeL * .5, v = Math.abs(noise(px / l, py / l, pz / l, S + 140) + .3 * noise(px / l * 4, py / l * 4, pz / l * 4, S + 141)); h -= P.crack * (1 - ss(0, .06, v)); }
+    if (P.forms) for (let q = 0; q < P.forms.length; q++) { const f0 = P.forms[q]; if (minL > f0.L * .8) continue; const mk = ss(f0.th, f0.th + .14, noise(x * f0.f + q * 7.3, y * f0.f, z * f0.f, S + 300 + q)) * (f0.any ? 1 : land); if (mk > .01) h = form(f0, h, mk, px, py, pz, S + 330 + q * 5, minL, wx, wy); }
     if (P.terrace > 0) { const st = P.terrace, k = Math.floor(h / st), fr = h / st - k; h = (k + ss(.35, .75, fr)) * st * .85 + h * .15; }
     if (P.crater > 0) h += crater(px, py, pz, minL);
     if (P.dune > 0 && minL < 300) { const l = 620, dx = px + 240 * noise(px / 900, py / 900, pz / 900, S + 150), v = 1 - Math.abs(noise(dx / l, py / l * .35, pz / l, S + 151)) * 2; h += P.dune * Math.max(0, v) ** 1.6 * land; if (minL < 8) h += Math.sin((dx + pz * .4) / 2.2 + noise(px / 30, py / 30, pz / 30, S + 152) * 4) * .12; }
