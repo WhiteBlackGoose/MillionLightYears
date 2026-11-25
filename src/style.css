@@ -91,3 +91,6 @@ button:hover{background:#ffe1b8}button:focus-visible{outline:2px solid #fff;outl
 @media(max-height:760px){#dial{width:290px;height:290px}}
 
 #mapinfo .it.on{background:#ffc27a;color:#120b04}#mapinfo .it.on em{color:#120b04}.node.sel span{color:var(--amber);opacity:1;left:22px;top:-26px}
+
+#prograde{position:absolute;left:0;top:0;opacity:0}#prograde.on{opacity:1}#prograde:before{content:'';position:absolute;left:-9px;top:-9px;width:18px;height:18px;border:2px solid #8dffb0;border-radius:50%;box-sizing:border-box;filter:drop-shadow(0 0 4px #000)}#prograde:after{content:'';position:absolute;left:-17px;top:-1px;width:34px;height:2px;background:linear-gradient(90deg,#8dffb0 8px,transparent 8px 26px,#8dffb0 26px)}
+#turn{position:absolute;left:0;top:0;white-space:nowrap;color:#8dffb0;text-shadow:0 0 3px #000,0 0 8px #000}
