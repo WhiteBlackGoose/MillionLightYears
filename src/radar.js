@@ -8,7 +8,7 @@ export class Radar {
     const lo = Math.floor(Math.log10(Math.max(items[0].d, 1)) - .6), hi = Math.max(lo + 3, Math.log10(Math.max(items[items.length - 1].d, 10)) + .15); this.lo += (Math.max(0, lo) - this.lo) * .15; this.hi += (hi - this.hi) * .15;
     const rad = d => Math.max(.03, Math.min(1, (Math.log10(Math.max(d, 1)) - this.lo) / (this.hi - this.lo))) * R;
     const g = x.createRadialGradient(cx, cy, 0, cx, cy, R); g.addColorStop(0, 'rgba(10,14,24,.35)'); g.addColorStop(1, 'rgba(6,8,16,.72)'); x.fillStyle = g; x.beginPath(); x.ellipse(cx, cy, R, R * K, 0, 0, 7); x.fill();
-    const span = this.hi - this.lo, step = Math.max(1, Math.ceil(span / 5)); x.font = '9px "Martian Mono Variable",monospace'; x.lineWidth = 1;
+    const span = this.hi - this.lo, step = Math.max(1, Math.ceil(span / 5)); x.font = '9px "Inter Variable",system-ui,sans-serif'; x.lineWidth = 1;
     for (let k = Math.ceil(this.lo + .3); k < this.hi; k += step) { const r = rad(10 ** k); x.strokeStyle = 'rgba(190,210,255,.20)'; x.beginPath(); x.ellipse(cx, cy, r, r * K, 0, 0, 7); x.stroke(); if (r > 14 && r < R - 4) { x.fillStyle = 'rgba(200,215,245,.75)'; x.textAlign = 'left'; x.fillText(dist(10 ** k).replace(/\.0+ /, ' ').replace('.00', ''), cx + 3, cy + r * K - 2); } }
     x.strokeStyle = 'rgba(220,230,255,.45)'; x.beginPath(); x.ellipse(cx, cy, R, R * K, 0, 0, 7); x.stroke();
     x.strokeStyle = 'rgba(255,194,122,.28)'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx - R * .46, cy - R * K * .88); x.moveTo(cx, cy); x.lineTo(cx + R * .46, cy - R * K * .88); x.stroke();

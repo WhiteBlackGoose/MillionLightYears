@@ -61,7 +61,7 @@ export class Interior {
     // live screens in the cockpit
     this.cv = document.createElement('canvas'); this.cv.width = 768; this.cv.height = 256; this.tx = new THREE.CanvasTexture(this.cv); const scr = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 1.1), new THREE.MeshBasicMaterial({ map: this.tx, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); scr.position.set(0, Y0 + 10 * H + 3.75, -(RAD[10] - .6)); scr.rotation.x = .3; this.group.add(scr); this.tt = 0;
   }
-  text(lines) { const c = this.cv.getContext('2d'); c.clearRect(0, 0, 768, 256); c.strokeStyle = '#6fb4ff66'; c.strokeRect(2, 2, 764, 252); c.fillStyle = '#bfe0ff'; c.font = '44px Italiana,serif'; c.fillText(lines[0], 24, 56); c.font = '22px "Martian Mono Variable",monospace'; lines.slice(1).forEach((l, i) => c.fillText(l, 24, 104 + i * 36)); this.tx.needsUpdate = true; }
+  text(lines) { const c = this.cv.getContext('2d'); c.clearRect(0, 0, 768, 256); c.strokeStyle = '#6fb4ff66'; c.strokeRect(2, 2, 764, 252); c.fillStyle = '#bfe0ff'; c.font = '44px Italiana,serif'; c.fillText(lines[0], 24, 56); c.font = '22px "Inter Variable",system-ui,sans-serif'; lines.slice(1).forEach((l, i) => c.fillText(l, 24, 104 + i * 36)); this.tx.needsUpdate = true; }
   update(dt, power) { const t = clock.value; this.core.scale.setScalar(1 + .06 * Math.sin(t * 3) + power * .2); this.core.material.uniforms.uK.value = .9 + power * 2.2; this.rings.forEach((q, k) => { this.rk = (this.rk || 0) + dt * (.3 + power * 5); q.rotation.set(this.rk * (k + 1) * .5, this.rk * (.7 - k * .4), k); }); this.holo.rotation.y = t * .1; }
 }
 export const floorY = i => Y0 + i * H;
