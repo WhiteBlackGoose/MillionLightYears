@@ -26,7 +26,7 @@ uniform sampler3D uN,uDA;uniform float uCov,uCF,uCSt,uCWarp,uCSoft,uCVort;unifor
 vec3 vortex(vec3 p){if(uCVort<.01)return p;for(int i=0;i<3;i++){vec3 c=uCV[i];float k=dot(p,c);if(k<.7)continue;float d=acos(clamp(k,-1.,1.));float a=uCVort*1.1*exp(-d*d*55.);p=p*cos(a)+cross(c,p)*sin(a)+c*k*(1.-cos(a));}return p;}
 float cloudD(vec3 n,float det){vec3 p=vortex(n);vec3 q=p*uCF*vec3(1.,uCSt,1.)+uCS+vec3(uTime*.00004,0.,uTime*.00002);vec4 a=texture(uN,q*.18),b=texture(uN,q*.6+(a.rgb-.5)*uCWarp);float v=a.r*.42+b.r*.36+b.g*.14;
  if(det>0.){vec4 c=texture(uDA,q*1.7+(b.rgb-.5)*uCWarp*.6);v+=(c.r-.5)*.3+(c.g-.3)*.1;}
- return smoothstep(.64-uCov*.36,.64-uCov*.36+uCSoft+.14,v);}
+ return smoothstep(.61-uCov*.36,.61-uCov*.36+uCSoft+.14,v);}
 `;
 // ---------- the body
 export class Terrain {
@@ -63,7 +63,7 @@ export class Terrain {
        // dried, cracked ground
        float flat_=smoothstep(.12,.02,slope)*smoothstep(.75,.45,moist);float ck=uM1.z*flat_*(smoothstep(.10,.0,a4.b)*f4+smoothstep(.07,.0,a3.b)*f3*.7);g*=1.-.65*ck;
        // bare rock with strata on slopes
-       float sy=(vA.x+(a1.r-.5)*60.*f1+(a2.r-.5)*14.*f2)/uM1.y;vec3 st=uSt[0]+uSt[1]*cos(6.28318*(uSt[2]*sy+uSt[3]));float thin=texture(uDA,vec3(.37,sy*.21,.71)).r;st*=.7+.6*thin;
+       float sy=(vA.x+(a1.r-.5)*60.*f1+(a2.r-.5)*14.*f2)/uM1.y;float sw=smoothstep(.45,.1,fwidth(sy)*1.4);vec3 st=uSt[0]+uSt[1]*cos(6.28318*(uSt[2]*sy+uSt[3]))*sw;{float l=dot(max(st,0.),vec3(.3,.55,.15));st=min(mix(vec3(l),max(st,0.),.72),vec3(.62));}float thin=texture(uDA,vec3(.37,sy*.21,.71)).r;st*=.7+.6*thin;
        vec3 rock=mix(uC3*(.75+.5*a2.r),max(st,.01),uM1.x);rock*=.72+.5*mh+(a4.a-.5)*.3*f4;rock*=1.-.5*smoothstep(.10,0.,a3.b)*f3;
        float rk=smoothstep(.0,.16,slope-.12+(mh-.5)*.22+max(h,0.)*.05);
        vec3 alb=mix(g,rock,rk);float gloss=uM2.z*mix(.35,1.,rk);
@@ -88,7 +88,7 @@ export class Terrain {
          float foam=smoothstep(2.4,0.,depth)*smoothstep(.42,.62,a3.r*f3+.5*(1.-f3)+.08*sin(tm*.9+vA.x*3.+a2.r*8.));
          alb=mix(alb,mix(wc,vec3(.92),foam*.75*f2),water);Nb=normalize(mix(Nb,Wn,water));emi+=skyc*fr*water*(1.-foam)*1.1;gloss*=1.-water;}}
        float cs=1.;if(uCov>.01)cs=1.-.7*cloudD(normalize(up+uSunDir*.0012),0.)*smoothstep(0.,.1,dot(up,uSunDir));
-       cs*=mix(1.,sunShadow(vP+N*.06),smoothstep(6000.,4200.,D));
+       cs*=mix(1.,sunShadow(vP,N),smoothstep(6000.,4200.,D));
        float nl=max(dot(Nb,uSunDir),0.),ao=mix(1.,.5+.65*mh,f3);
        vec3 lit=uSunCol*sT*nl*cs*1.65+(skyc*(.55+.45*dot(Nb,up))*mix(.6,1.,cs)+vec3(.010,.012,.018))*ao;
        lit+=uLampI*(1.-.92*day)*vec3(1.,.85,.65)/(1.+dot(vP-uLamp,vP-uLamp)/500.)*max(dot(Nb,normalize(uLamp+up*6.-vP)),0.)*1.6;
@@ -163,7 +163,7 @@ export class Terrain {
       t.copy(nd.dir).multiplyScalar(R + (nd.hmax + nd.hmin) / 2).sub(cam); const cd2 = t.length(), rad = nd.size * .75 + (nd.hmax - nd.hmin) / 2, dd = Math.max(cd2 - rad, nd.size * .03, 1);
       if (nd.l > 0 && cd2 > rad * 1.3 && cosFov > -1) { const c = t.dot(fwd) / cd2, s = rad / cd2; if (Math.acos(Math.max(-1, Math.min(1, c))) - Math.asin(Math.min(1, s)) > cosFov) return; }
       const px = nd.size / dd * pxPerRad;
-      if (px > 370 && nd.l < this.maxL) { if (!nd.kids) nd.kids = [0, 1, 2, 3].map(i => this.node(nd.f, nd.l + 1, nd.x * 2 + (i & 1), nd.y * 2 + (i >> 1))); let ok = true; for (const k of nd.kids) { k.used = this.frame; if (k.state !== 2) { ok = false; this.request(k, px / (1 + nd.l * .02)); } } if (ok) { for (const k of nd.kids) visit(k); return; } }
+      if (px > 440 && nd.l < this.maxL) { if (!nd.kids) nd.kids = [0, 1, 2, 3].map(i => this.node(nd.f, nd.l + 1, nd.x * 2 + (i & 1), nd.y * 2 + (i >> 1))); let ok = true; for (const k of nd.kids) { k.used = this.frame; if (k.state !== 2) { ok = false; this.request(k, px / (1 + nd.l * .02)); } } if (ok) { for (const k of nd.kids) visit(k); return; } }
       this.show(nd, cam); tris++;
     };
     for (const m of this.vis || []) m.visible = false; this.vis = []; for (const r of this.roots) visit(r);

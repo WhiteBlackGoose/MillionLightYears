@@ -7,16 +7,16 @@ export const SHGLSL = /* glsl */`
 uniform sampler2D uSh0,uSh1,uSh2;uniform mat4 uShM[3];uniform float uShOn;
 float shUn(vec4 c){return dot(c,vec4(1.,1./255.,1./65025.,1./16581375.));}
 float shTap(sampler2D m,vec3 c,float b,float px){vec2 q=c.xy/px-.5,f=fract(q),o=(floor(q)+.5)*px;vec4 t=vec4(shUn(texture2D(m,o)),shUn(texture2D(m,o+vec2(px,0.))),shUn(texture2D(m,o+vec2(0.,px))),shUn(texture2D(m,o+px)));t=step(c.z-b,t);return mix(mix(t.x,t.y,f.x),mix(t.z,t.w,f.x),f.y);}
-float sunShadow(vec3 p){if(uShOn<.5)return 1.;float s=1.;vec3 c=(uShM[0]*vec4(p,1.)).xyz;vec3 e=abs(c-.5);
+float sunShadow(vec3 p,vec3 n){if(uShOn<.5)return 1.;float s=1.;vec3 c=(uShM[0]*vec4(p+n*.07,1.)).xyz;vec3 e=abs(c-.5);
  if(max(e.x,e.y)<.48&&e.z<.5)s=min(s,shTap(uSh0,c,.0012,${(1 / DEF[0][1]).toFixed(7)}));
- else{c=(uShM[1]*vec4(p,1.)).xyz;e=abs(c-.5);if(max(e.x,e.y)<.49&&e.z<.5)s=min(s,shTap(uSh1,c,.0022,${(1 / DEF[1][1]).toFixed(7)}));}
- c=(uShM[2]*vec4(p,1.)).xyz;e=abs(c-.5);float k=max(e.x,e.y);if(k<.49&&e.z<.5)s=min(s,mix(1.,shTap(uSh2,c,.0035,${(1 / DEF[2][1]).toFixed(7)}),smoothstep(.49,.42,k)));
+ else{c=(uShM[1]*vec4(p+n*.9,1.)).xyz;e=abs(c-.5);if(max(e.x,e.y)<.49&&e.z<.5)s=min(s,shTap(uSh1,c,.0022,${(1 / DEF[1][1]).toFixed(7)}));}
+ c=(uShM[2]*vec4(p+n*13.,1.)).xyz;e=abs(c-.5);float k=max(e.x,e.y);if(k<.49&&e.z<.5)s=min(s,mix(1.,shTap(uSh2,c,.0035,${(1 / DEF[2][1]).toFixed(7)}),smoothstep(.49,.42,k)));
  return s;}
 `;
 export class Shadows {
   constructor() {
     this.mat = new THREE.ShaderMaterial({ side: THREE.DoubleSide, vertexShader: 'void main(){vec4 p=vec4(position,1.);\n#ifdef USE_INSTANCING\np=instanceMatrix*p;\n#endif\ngl_Position=projectionMatrix*modelViewMatrix*p;}', fragmentShader: 'void main(){vec4 e=vec4(1.,255.,65025.,16581375.)*gl_FragCoord.z;e=fract(e);e-=e.yzww*vec4(1./255.,1./255.,1./255.,0.);gl_FragColor=e;}' });
-    this.c = DEF.map(([r, n, every], i) => { const rt = new THREE.WebGLRenderTarget(n, n, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false }); shU['uSh' + i].value = rt.texture; const cam = new THREE.OrthographicCamera(-r, r, r, -r, 0, r * 4); cam.layers.set(i === 2 ? 2 : 1); return { rt, cam, r, every, org: V(), m: new THREE.Matrix4() }; }); this.f = 0; this.off = V();
+    this.c = DEF.map(([r, n, every], i) => { const rt = new THREE.WebGLRenderTarget(n, n, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false }); shU['uSh' + i].value = rt.texture; const cam = new THREE.OrthographicCamera(-r, r, r, -r, 0, r * 4); cam.layers.set(i === 2 ? 2 : 1); if (i === 1) cam.layers.enable(3); return { rt, cam, r, every, org: V(), m: new THREE.Matrix4() }; }); this.f = 0; this.off = V();
   }
   // camP: camera position relative to the body (metres), dir: to the sun
   update(renderer, scene, dir, camP, on) {
