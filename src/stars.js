@@ -27,7 +27,7 @@ export class Stars {
       const m = new THREE.Points(geo, mat({ ...add, depthTest: true, uniforms: u, vertexColors: true, vertexShader: REL + /* glsl */`attribute float lum,tmp;uniform vec3 uCam;uniform float uEdge,uPx;varying vec3 vC;varying float vS;
       void main(){vec3 p=position-uCam;float d=length(p);float f=lum/(d*d+1e-6);vec3 n=p/d;vec3 q=aberr(p);
        float e=smoothstep(1.,.72,d/uEdge)*smoothstep(.015,.03,d);
-       vec3 c=color;if(uBeta>1e-4){float D=dopF(n);vec3 k=bbShift(tmp,D);f*=clamp(k.g/(D*D),1e-6,3000.);c*=clamp(k/max(k.g,1e-12),.15,4.);}float I=pow(f*900.,.42)*e;
+       vec3 c=color;if(uBeta>1e-4){float D=dopF(n);vec3 k=bbShift(tmp,D);f*=clamp(pow(k.g/(D*D),D>1.?.38:.7),1e-5,9.);vec3 h=k/max(k.r,max(k.g,k.b));c=mix(c,h,.75*clamp(abs(log(D))*1.5,0.,1.));}float I=pow(f*900.,.42)*e;
        float s=clamp(.75+I*1.05,1.,11.)*uPx;vS=s;vC=c*min(I*I*.6+I*.22,9.);gl_PointSize=s*2.2;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*q/d*1000.,1.);gl_Position.z=gl_Position.w;}`,
         fragmentShader: 'varying vec3 vC;varying float vS;void main(){vec2 q=abs(gl_PointCoord-.5)*2.;float d=length(q);float a=exp(-d*d*6.)+smoothstep(5.,12.,vS)*(exp(-q.x*26.)+exp(-q.y*26.))*.25*(1.-d);gl_FragColor=vec4(vC*max(a,0.)*smoothstep(1.,.75,d),1.);}' })); m.frustumCulled = false; m.renderOrder = -990; this.group.add(m);
       return { s, li, geo, m, u, key: '', cells: new Map(), list: [] }; });

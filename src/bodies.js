@@ -65,7 +65,7 @@ export function makeHole(b, hot = '#fff0d8', cool = '#ff7a2a', outer = 11, jets 
     vec3 hv=cross(p,v);float h2=dot(hv,hv);vec3 col=vec3(0);float tr=1.;bool fell=false;
     for(int i=0;i<150;i++){float r=length(p);if(dark||(r<1.&&dot(p,v)<0.)||r<.004){fell=true;break;}if(r>B*1.01&&dot(p,v)>0.)break;float dt=(r<1.25?r*.075:max(.05,.13*(r-.55))*(1.-.35*exp(-abs(p.y)*1.5)))/max(length(v),.3);vec3 ac=-1.5*h2*p/pow(r,5.);vec3 nv=v+ac*dt,pn=p+(v+nv)*.5*dt;if(p.y*pn.y<0.){vec3 x=mix(p,pn,p.y/(p.y-pn.y));vec4 d=disk(x,nv);col+=d.rgb*tr;tr*=1.-d.a;if(tr<.03)break;}p=pn;v=nv;}
     vec3 dir=normalize(transpose(uInv)*v);if(!fell&&tr>.02)col+=tr*(skyAt(dir)+stars(dir));
-    col=shiftCol(col,clamp(gD,.03,12.));
+    col=shiftCol(col,clamp(gD,.03,12.))*(X<1.?1.+1.6*(1.-X):1.);
     gl_FragColor=vec4(doppler(col,rw),X<B*.7?1.:smoothstep(B*.98,B*.72,sqrt(h2)));gl_FragDepth=X<B?.99999:logd(max(-b,0.)*uScaleM*dot(normalize(vP),uFwd));}`.replace('uniform mat3', 'uniform float uScaleM;uniform mat3'), { transparent: true }); m.material.uniforms.uScaleM = { value: b.R }; m.renderOrder = -5; g.add(m);
   const syncs = [];
   if (jets) { b.jet = b.up.clone(); b.jetLen = b.R * 60; for (const s of [1, -1]) for (const [w, gain] of [[1, .55], [.4, 1.6]]) { const geo = new THREE.CylinderGeometry(4.2 * w, .35 * w, 60, 48, 40, true).translate(0, 30.8, 0); if (s < 0) geo.rotateX(Math.PI); geo.applyQuaternion(q);

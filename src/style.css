@@ -98,4 +98,6 @@ button:hover{background:#ffe1b8}button:focus-visible{outline:2px solid #fff;outl
 
 #hole{position:absolute;left:50%;top:26px;transform:translateX(-50%);width:380px;padding:14px 20px;background:#07060cb8;border:1px solid #ffb06a88;opacity:0;visibility:hidden;transition:opacity .5s}#hole.on{opacity:1;visibility:visible}#hole b{display:block;font:400 25px/1.15 var(--disp);text-align:center;margin-bottom:8px}#hole b.o{color:#ffc27a}#hole dl{display:grid;grid-template-columns:auto 1fr;gap:1px 16px}#hole dt{color:var(--dim)}#hole dd{text-align:right}#hole p{margin-top:8px;text-align:center;color:#ffb0a0}#hole sup{font-size:.9em;line-height:0}
 #hole.in{border-color:#b98cff;box-shadow:0 0 40px #7a3cff66,inset 0 0 30px #7a3cff33}#hole.in b{color:#cdb0ff}
-body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 0 120px 30px #5a1fd0aa;pointer-events:none;animation:pulseh 3s infinite alternate}@keyframes pulseh{to{box-shadow:inset 0 0 170px 50px #7a2cffaa}}
+body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 0 70px 4px #5a1fd077;pointer-events:none;animation:pulseh 3s infinite alternate}@keyframes pulseh{to{box-shadow:inset 0 0 100px 10px #7a2cff88}}
+
+#hole.on~#banner{top:52%}
