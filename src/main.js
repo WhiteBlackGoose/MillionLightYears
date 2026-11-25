@@ -121,7 +121,7 @@ function spawn(saved) {
 }
 const px = () => post.scale * renderer.getPixelRatio() * innerHeight / 900;
 function envMap() { const pm = new THREE.PMREMGenerator(renderer); scene.userData.pm?.dispose(); const t = pm.fromCubemap(sky.rts[sky.cur].texture); scene.userData.pm = t; scene.environment = t.texture; scene.environmentIntensity = 2; pm.dispose(); }
-function setMode(m) { mode = m; body.classList.toggle('flying', m === 'flight'); body.classList.toggle('mapping', m === 'map'); if (m === 'map') gmap.open({ p: uniPos(), anchor, G: cur }); }
+function setMode(m) { mode = m; body.classList.toggle('flying', m === 'flight'); body.classList.toggle('mapping', m === 'map'); if (m === 'map') gmap.open({ p: uniPos(), anchor, G: cur, way: target && (target.star ? { star: target.star, name: target.name } : { star: anchor, name: target.name }) }); }
 const roman = n => { let s = ''; for (const [v, r] of [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]) while (n >= v) { s += r; n -= v; } return s; };
 function goWarp(fn, dur = 2.6) { if (warp) return; warp = { t: 0, dur, fn, done: false, ready: false }; audio.warp(); }
 
@@ -161,7 +161,9 @@ function pickHover() {
   if (hit) return { b: hit.b }; if (side) return { b: side.b }; if (nb && alt < 5000) return null;
   const s = P.w < LY * 5 ? stars.pick(gal, n, .9997) : null; if (s && s.id !== anchor.id) return { s }; const up = uniPos(); let bg = null, ba = .012; for (const [G, d] of uni.near(up, 25)) { if (d < G.R * 1.6) continue; const r = V(G.pos[0] - up.x, G.pos[1] - up.y, G.pos[2] - up.z).divideScalar(d), sep = Math.acos(Math.min(1, r.dot(n))) - Math.min(.3, G.R * .5 / d); if (sep < ba) { ba = sep; bg = G; } } if (bg) uni.pin(bg); return bg ? { s: bg.star } : null;
 }
-const gmap = new GMap(mapCam, t => { setMode('flight'); if (t.star?.G) uni.pin(t.star.G); if (t.here) target = (t.body && bodies.find(b => b.name === t.body)) || sys.main; else target = t; picked = true; if (P.state === 'fly') { hold = null; startGlide(); startTrip(target.name); toast('Gliding to ' + target.name); } else toast('Target: ' + target.name); });
+const mapTarget = t => { if (t.star?.G) uni.pin(t.star.G); target = t.here ? (t.body && bodies.find(b => b.name === t.body)) || sys.main : t; picked = true; };
+const gmap = new GMap(mapCam, t => { mapTarget(t); setMode('flight'); if (P.state === 'fly') { hold = null; startGlide(); startTrip(target.name); toast('Gliding to ' + target.name); } else toast('Waypoint: ' + target.name); },
+  t => { const was = target; mapTarget(t); if (glide && target !== was) { glide = false; toast('Autopilot off, new waypoint: ' + target.name); } else toast('Waypoint: ' + target.name); });
 
 // ---------- input
 addEventListener('mousemove', e => { const x = e.clientX, y = e.clientY; if (mode === 'map') gmap.move(x, y, mouse.down, e.movementX || 0, e.movementY || 0, e.buttons > 1 || e.shiftKey); if (document.pointerLockElement) { walk.yaw -= e.movementX * .0022; walk.pitch = Math.max(-1.5, Math.min(1.5, walk.pitch - e.movementY * .0022)); return; } mouse.px = x; mouse.py = y; const s = Math.min(innerWidth, innerHeight) * .42; mouse.x = Math.max(-1, Math.min(1, (x - innerWidth / 2) / s)); mouse.y = Math.max(-1, Math.min(1, (y - innerHeight / 2) / s)); });
