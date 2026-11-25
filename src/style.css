@@ -124,3 +124,5 @@ body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 
 
 #clocks{gap:30px;font-size:11.5px}#clocks span{font-size:10px}#clocks b{font:600 14px var(--mono)}#clocks em{color:#b8e8c0}#clocks div:nth-child(3) b{color:#ffd9a8}
 #clocks{bottom:74px}#land{bottom:150px}
+
+#speccap{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);font-size:10.5px;color:var(--dim);letter-spacing:.06em;text-shadow:0 0 6px #000;white-space:nowrap}#spectrum{bottom:34px}
