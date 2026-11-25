@@ -24,10 +24,10 @@ export function starName(s) { if (!s.name) { const r = rng(s.seed); s.name = mak
 export class Stars {
   constructor() {
     this.group = new THREE.Group(); this.layers = LAY.map((s, li) => { const geo = new THREE.BufferGeometry(); const u = { uCam: { value: V() }, uEdge: { value: EDGE[li] }, uPx: { value: 1 } };
-      const m = new THREE.Points(geo, mat({ ...add, depthTest: true, uniforms: u, vertexColors: true, vertexShader: REL + /* glsl */`attribute float lum;uniform vec3 uCam;uniform float uEdge,uPx;varying vec3 vC;varying float vS;
+      const m = new THREE.Points(geo, mat({ ...add, depthTest: true, uniforms: u, vertexColors: true, vertexShader: REL + /* glsl */`attribute float lum,tmp;uniform vec3 uCam;uniform float uEdge,uPx;varying vec3 vC;varying float vS;
       void main(){vec3 p=position-uCam;float d=length(p);float f=lum/(d*d+1e-6);vec3 n=p/d;vec3 q=aberr(p);
        float e=smoothstep(1.,.72,d/uEdge)*smoothstep(.015,.03,d);
-       float I=pow(f*900.,.42)*e;vec3 c=doppler(color,n);
+       vec3 c=color;if(uBeta>1e-4){float D=dopF(n);vec3 k=bbShift(tmp,D);f*=clamp(k.g/(D*D),1e-6,3000.);c*=clamp(k/max(k.g,1e-12),.15,4.);}float I=pow(f*900.,.42)*e;
        float s=clamp(.75+I*1.05,1.,11.)*uPx;vS=s;vC=c*min(I*I*.6+I*.22,9.);gl_PointSize=s*2.2;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*q/d*1000.,1.);gl_Position.z=gl_Position.w;}`,
         fragmentShader: 'varying vec3 vC;varying float vS;void main(){vec2 q=abs(gl_PointCoord-.5)*2.;float d=length(q);float a=exp(-d*d*6.)+smoothstep(5.,12.,vS)*(exp(-q.x*26.)+exp(-q.y*26.))*.25*(1.-d);gl_FragColor=vec4(vC*max(a,0.)*smoothstep(1.,.75,d),1.);}' })); m.frustumCulled = false; m.renderOrder = -990; this.group.add(m);
       return { s, li, geo, m, u, key: '', cells: new Map(), list: [] }; });
@@ -43,8 +43,8 @@ export class Stars {
       if (key !== l.key && !(speedLy > l.s * 3 && performance.now() - (l.t || 0) < 120)) { l.key = key; l.t = performance.now(); l.base = [X * l.s, Y * l.s, Z * l.s]; if (l.cells.size > 9000) l.cells.clear(); const list = l.list = [];
         for (let a = -RC; a <= RC; a++) for (let b = -RC; b <= RC; b++) for (let c = -RC; c <= RC; c++) for (const s of this.cell(l, X + a, Y + b, Z + c)) list.push(s);
         const lm = []; if (this.marks) for (const s of this.marks) if (l.li === (s.L > 200 ? 2 : 1) && Math.hypot(s.x - g.x, s.y - g.y, s.z - g.z) < EDGE[l.li]) { list.push(s); }
-        const n = list.length, p = new Float32Array(n * 3), co = new Float32Array(n * 3), lu = new Float32Array(n); for (let i = 0; i < n; i++) { const s = list[i]; p[i * 3] = s.x - l.base[0]; p[i * 3 + 1] = s.y - l.base[1]; p[i * 3 + 2] = s.z - l.base[2]; const q = s.c || (s.c = tempColor(s.T)); co[i * 3] = q.r; co[i * 3 + 1] = q.g; co[i * 3 + 2] = q.b; lu[i] = s.L; }
-        l.geo.dispose(); l.geo.setAttribute('position', new THREE.BufferAttribute(p, 3)); l.geo.setAttribute('color', new THREE.BufferAttribute(co, 3)); l.geo.setAttribute('lum', new THREE.BufferAttribute(lu, 1)); l.geo.setDrawRange(0, n); }
+        const n = list.length, p = new Float32Array(n * 3), co = new Float32Array(n * 3), lu = new Float32Array(n), tp = new Float32Array(n); for (let i = 0; i < n; i++) { const s = list[i]; p[i * 3] = s.x - l.base[0]; p[i * 3 + 1] = s.y - l.base[1]; p[i * 3 + 2] = s.z - l.base[2]; const q = s.c || (s.c = tempColor(s.T)); co[i * 3] = q.r; co[i * 3 + 1] = q.g; co[i * 3 + 2] = q.b; lu[i] = s.L; tp[i] = Math.min(s.T, 40000); }
+        l.geo.dispose(); l.geo.setAttribute('position', new THREE.BufferAttribute(p, 3)); l.geo.setAttribute('color', new THREE.BufferAttribute(co, 3)); l.geo.setAttribute('lum', new THREE.BufferAttribute(lu, 1)); l.geo.setAttribute('tmp', new THREE.BufferAttribute(tp, 1)); l.geo.setDrawRange(0, n); }
       if (l.base) l.u.uCam.value.set(g.x - l.base[0], g.y - l.base[1], g.z - l.base[2]); }
   }
   nearest(g, k = 3) { const best = []; for (const l of this.layers) for (const s of l.list) { const d = (s.x - g.x) ** 2 + (s.y - g.y) ** 2 + (s.z - g.z) ** 2; if (best.length < k || d < best[best.length - 1][1]) { best.push([s, d]); best.sort((a, b) => a[1] - b[1]); if (best.length > k) best.pop(); } } return best.map(([s, d]) => [s, Math.sqrt(d)]); }

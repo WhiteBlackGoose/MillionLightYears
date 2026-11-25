@@ -77,6 +77,8 @@ export class Sky {
 export function skyMesh(rel = true) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(200, 200, 200), mat({ side: THREE.BackSide, depthTest: false, depthWrite: false, uniforms: skyU,
     vertexShader: 'varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*position,1.);}',
-    fragmentShader: REL + SKYFN + (rel ? 'varying vec3 vD;void main(){vec3 d=unab(normalize(vD));gl_FragColor=vec4(doppler(skyAt(d),d),1.);}' : 'varying vec3 vD;void main(){gl_FragColor=vec4(skyAt(normalize(vD))*.5,1.);}') }));
+    fragmentShader: REL + SKYFN + (rel ? `varying vec3 vD;uniform float uLogG;void main(){vec3 v=normalize(vD),d=unab(v);vec3 c=doppler(skyAt(d),d);
+ if(uLogG>4.){float th=acos(clamp(dot(v,uBDir),-1.,1.))/25.;float lD=uLogG+.6931-log(1.+exp(min(2.*(uLogG+log(max(th,1e-12))),60.)));float T=2.725*exp(min(lD,13.));vec3 b=planck(T);float m=max(b.r,max(b.g,b.b));if(m>1e-7)c+=b/m*min(pow(m*4e3,.33),7.);}
+ gl_FragColor=vec4(c,1.);}` : 'varying vec3 vD;void main(){gl_FragColor=vec4(skyAt(normalize(vD))*.5,1.);}') }));
   m.renderOrder = -1000; m.frustumCulled = false; return m;
 }

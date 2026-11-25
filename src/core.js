@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 export const C0 = 299792458, LY = 9.4607304725808e15, AU = 1.495978707e11, FAR = 1e15;
-export const shared = { uBDir: { value: new THREE.Vector3(0, 0, -1) }, uBeta: { value: 0 }, uMeas: { value: 0 }, uFwd: { value: new THREE.Vector3(0, 0, -1) }, uTime: { value: 0 } };
+export const shared = { uBDir: { value: new THREE.Vector3(0, 0, -1) }, uBeta: { value: 0 }, uMeas: { value: 0 }, uFwd: { value: new THREE.Vector3(0, 0, -1) }, uTime: { value: 0 }, uLogG: { value: 0 } };
 // Special relativity on directions. "Seen" = aberration of light; "measured" = pure Lorentz contraction along the motion.
 export const REL = /* glsl */`
 uniform vec3 uBDir,uFwd;uniform float uBeta,uMeas;
@@ -11,8 +11,12 @@ vec3 aberr(vec3 p){if(uBeta<1e-4)return p;float l=length(p);vec3 n=p/l;float c=d
 vec3 unab(vec3 n){if(uBeta<1e-4)return n;float c=dot(n,uBDir),g=1./sqrt(1.-uBeta*uBeta);vec3 q=n-c*uBDir;
  if(uMeas>.5)return normalize(uBDir*c*g+q);
  float k=1.-uBeta*c;return normalize(uBDir*(c-uBeta)/k+q/(g*k));}
-vec3 doppler(vec3 col,vec3 n){if(uBeta<1e-4)return col;float d=(1.+uBeta*dot(n,uBDir))/sqrt(1.-uBeta*uBeta);float s=pow(d,.8);
- return max(col,0.)*pow(d,1.15)*vec3(pow(s,-.75),1.,pow(s,.75));}
+// A black body of temperature T seen at frequency factor D is exactly a black body of temperature T*D.
+vec3 planck(float T){return 1./(exp(min(vec3(23587.,26160.,30942.)/max(T,1.),60.))-1.);} // relative radiance at 610, 550, 465 nm
+vec3 bbShift(float T,float D){vec3 x=vec3(23587.,26160.,30942.)/T;return (exp(min(x,60.))-1.)/(exp(min(x/max(D,.02),60.))-1.);}
+vec3 shiftCol(vec3 col,float D){if(abs(D-1.)<1e-4)return col;vec3 k=pow(max(bbShift(5600.,D),1e-12),vec3(.42));return max(col,0.)*max(min(k,40.),vec3(.02,.006,.003));}
+float dopF(vec3 n){return uBeta<1e-4?1.:(1.+uBeta*dot(n,uBDir))/sqrt(1.-uBeta*uBeta);}
+vec3 doppler(vec3 col,vec3 n){return uBeta<1e-4?col:shiftCol(col,dopF(n));}
 float logd(float w){return log2(max(1.+w,1e-6))*LDK;}
 `;
 export const PROXY = REL + /* glsl */`uniform vec3 uOff;uniform float uScale;varying vec3 vP;
