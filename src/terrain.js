@@ -118,7 +118,7 @@ export class Terrain {
     if (a.cloud > .02) { const cl = new THREE.Mesh(geo, mat({ ...premul, side: THREE.BackSide, uniforms: { ...u, uCA: { value: (b.R + a.cloudH) / 1e3 }, uCB: { value: (b.R + a.cloudH + a.cThick) / 1e3 } }, vertexShader: PROXY, fragmentShader: NOISE + REL + 'precision highp sampler3D;\n' + ATM + CLOUD + /* glsl */`varying vec3 vP;uniform float uCA,uCB;uniform vec3 uCBase,uCTint;
       float dens(vec3 p,float cov,float det){float hr=(length(p)-uCA)/(uCB-uCA);if(hr<0.||hr>1.)return 0.;float th=uCB-uCA;
        float d=cov-mix(.75*pow(hr,1.6),0.,0.)-.35*smoothstep(.12,0.,hr);if(d<=0.)return 0.;
-       vec3 q=p/(th*3.2);vec4 a=texture(uDA,q+vec3(0.,uTime*.0006,0.));d-=(1.-a.r)*.38;if(det>.5){vec4 c=texture(uDA,q*4.3+a.rgb*.25);d-=(1.-c.r)*.22+(.5-c.g)*.10;}
+       vec3 q=p/(th*3.2);vec4 a=texture(uDA,q+vec3(0.,uTime*.0006,0.));d-=(1.-a.r)*.42+(1.-texture(uDA,q*.31+.37).r)*.5-.2;if(det>.5){vec4 c=texture(uDA,q*4.3+a.rgb*.25);d-=(1.-c.r)*.22+(.5-c.g)*.10;}
        return clamp(d*2.6,0.,1.);}
       void main(){vec3 d=unab(normalize(vP));float alt=length(uCamP),th=uCB-uCA;vec2 A=sph(uCamP,d,uCA),B=sph(uCamP,d,uCB),G=sph(uCamP,d,uRk*.999);
        bool gh=G.y>0.&&G.x>0.&&G.x<G.y;if(B.y<=0.||B.x>B.y)discard;float t0,t1;
@@ -131,9 +131,9 @@ export class Terrain {
        for(int i=0;i<NS;i++){vec3 p=uCamP+d*t,n=p/length(p);if(i%2==0||far>.6)cov=cloudD(n,1.);
         if(cov>.01){float q=dens(p,cov,far>.6?0.:1.);
          if(q>.004){if(!have){sunA=sunT(p);have=true;}float hr=(length(p)-uCA)/th,sh=0.;float ls=th*.16;for(int k=1;k<=3;k++){vec3 s=p+uSunDir*ls*float(k*k)*.55;sh+=dens(s,cov,0.)*float(k);}
-          float sun=exp(-sh*1.05)*.82+exp(-sh*.25)*.18;sun*=1.-exp(-q*7.)*.45;
+          float sun=exp(-sh*1.7)*.8+exp(-sh*.35)*.2;sun*=.55+.45*exp(-q*2.2)*2.;
           float nl=dot(n,uSunDir),dayl=smoothstep(-.15,.3,nl);vec3 tint=mix(uCBase,uCTint,smoothstep(0.,.75,hr+.25*(1.-sh)));
-          vec3 c=tint*(uSunCol*sunA*sun*(1.15+hg*9.)*1.25+amb*dayl*(.22+.5*hr)+vec3(.004))+uFlash*vec3(1.1,1.2,1.6)*q*exp(-sh*.3);
+          vec3 c=tint*(uSunCol*sunA*sun*(.62+hg*5.)+amb*dayl*(.22+.5*hr)+vec3(.004))+uFlash*vec3(1.1,1.2,1.6)*q*exp(-sh*.3);
           float a=1.-exp(-q*dt*sig*4.);col+=tr*a*c;tw+=tr*a*t;ta+=tr*a;tr*=1.-a;if(tr<.02)break;}}
         t+=dt;}
        if(ta<.006)discard;float tm=tw/ta;float Al=1.-tr;
