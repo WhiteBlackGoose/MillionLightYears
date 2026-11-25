@@ -318,6 +318,7 @@ function simulate(dt) {
   const man = ctl && !inside;
   if (man) { if (steerT >= 0) { steerT += dt; if (steerT > .25) head = cursorDir(false); } if (keys.ArrowLeft) yaw = 1; if (keys.ArrowRight) yaw = -1; if (keys.ArrowUp) pitch = 1; if (keys.ArrowDown) pitch = -1; if (pitch || yaw) { head = null; if (glide) glide = false; } roll = (keys.KeyA ? 1 : 0) - (keys.KeyD ? 1 : 0); if (keys.KeyW) P.thr = Math.min(1, P.thr + dt * .7); if (keys.KeyS) P.thr = Math.max(0, P.thr - dt * .7); }
   if (coast && !inside && (keys.ShiftLeft || keys.ShiftRight)) coast = false;
+  let escW = null; if (escapeG && (P.state !== 'fly' || gaze || dead)) escapeG = null; if (escapeG) escW = escapeStep();
   const boost = man && (keys.ShiftLeft || keys.ShiftRight), brake = man && keys.KeyX; if (brake) { P.thr = Math.max(0, P.thr - dt * 2); glide = false; hold = null; } if (man && (keys.KeyS || keys.KeyW) && !glide) hold = null;
   P.boostT = boost ? P.boostT + dt : 0;
   if (near[0]) { const dn = Math.hypot(near[0].s.x - gal.x, near[0].s.y - gal.y, near[0].s.z - gal.z) * LY; if (dn > .01 * LY) nearD = Math.min(nearD, dn); }
@@ -333,7 +334,7 @@ function simulate(dt) {
   }
   if (leaving && (leaving.b !== nb || P.state !== 'fly' || glide || steerT >= 0 || brake || hold || (man && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)))) { leaving = null; }
   if (leaving) { leaving.t += dt; const u = upAt(nb, P.pos), goal = leaving.short ? 330 : leaveGoal(nb), f = V(0, 0, -1).applyQuaternion(P.q), side = f.clone().addScaledVector(u, -f.dot(u)); if (side.lengthSq() < .001) side.set(1, 0, 0).applyQuaternion(P.q); side.normalize(); const side0 = side.clone(); const el = alt < 1500 || leaving.short ? 1.5 : 1.3, dir = side.multiplyScalar(Math.cos(el)).addScaledVector(u, Math.sin(el)); m4.lookAt(V(), dir, u); dq.setFromRotationMatrix(m4); P.q.slerp(dq, 1 - Math.exp(-dt * 1.6)); pitch = yaw = roll = 0; if (alt < 140) P.drift.addScaledVector(u, dt * 16); want = leaving.t < 2 ? 14 : leaving.short ? 75 : Math.min(airCap, Math.max(60, Math.min(alt * .9 + 80, (goal - alt) * .8 + 30))); if (leaving.short && alt > goal) { leaving = null; props.clr = null; head = side0.clone().addScaledVector(u, .1).normalize(); P.thr = .35; } else if (!leaving?.short && leaving && alt > goal * .985) { leaving = null; P.thr = .15; P.w = Math.min(P.w, LOWV); toast(`${dist(alt)} above ${nb.name}`); } }
-  let escW = null; if (escapeG && (P.state !== 'fly' || gaze || dead)) escapeG = null; if (escapeG) { escW = escapeStep(); if (escW !== null) want = escW; }
+  if (escW !== null) want = escW;
   if (gaze || dead || P.state !== 'fly') want = 0;
   if (ctl && nb && alt < Math.min(60000, nb.R * .2) && !roll) { const u = upAt(nb, P.pos), r = V(1, 0, 0).applyQuaternion(P.q), f = V(0, 0, -1).applyQuaternion(P.q); if (Math.abs(f.dot(u)) < .9) roll = -r.dot(u) * .9; } // gently level with the horizon
   if (!ctl) { head = null; steerT = -1; }
