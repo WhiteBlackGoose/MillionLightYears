@@ -20,7 +20,7 @@ export class Audio {
   chime(i = 0) { this.tone(PENTA[i % 7], 2.5, .12); this.tone(PENTA[i % 7] * 2, 1.6, .03); }
   fanfare() { [0, 2, 4, 6].forEach((n, i) => setTimeout(() => this.chime(n), i * 130)); }
   warp() { this.tone(60, 3, .25, 'sawtooth', 900); this.boom(.5, 2500); }
-  update(speed, muf) { if (!this.x) return; const t = this.x.currentTime; this.eg.gain.setTargetAtTime(Math.min(.3, speed / 3800), t, .12); this.ef.frequency.setTargetAtTime(120 + Math.min(1600, speed * .5), t, .2); this.f.Q.setTargetAtTime(muf ? 6 : .6, t, .5);
+  update(speed, muf) { if (!this.x || !isFinite(speed)) return; const t = this.x.currentTime; this.eg.gain.setTargetAtTime(Math.min(.3, speed / 3800), t, .12); this.ef.frequency.setTargetAtTime(120 + Math.min(1600, speed * .5), t, .2); this.f.Q.setTargetAtTime(muf ? 6 : .6, t, .5);
     if (t > this.next) { this.next = t + 2.5 + Math.random() * 6; const c = CH[this.k] || CH.title; this.tone(c[Math.random() * c.length | 0] * (Math.random() < .5 ? 4 : 2), 4, .03); } }
   mute() { if (!this.x) return; this.m = !this.m; this.out.gain.setTargetAtTime(this.m ? 0 : .5, this.x.currentTime, .1); return this.m; }
 }

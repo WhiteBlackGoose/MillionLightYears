@@ -289,7 +289,7 @@ function thrustStep(dt, drag) { const eta = rapidity(P.w), v = D.clone().multipl
 const GN = 6.674e-11, HOLDMAX = 1e10, GH = { a: 0, hold: 0, b: null, n: V(), on: false, over: false, E: 0, P: 0, acc: V() };
 function gravityStep(dt) { const g = V(); let top = null, ta = 0; GH.on = GH.over = false; GH.P = 0; GH.acc.set(0, 0, 0);
   if (P.state !== 'fly' && P.state !== 'descend' || gaze || dead || hole) { GH.a = 0; return; }
-  for (const b of bodies) { const r = b.pos.clone().sub(P.pos), d = r.length(); if (d < b.R * .5) continue; let a = GN * (b.M ||= bodyMass(b)) / (d * d); if (b.kind === 'blackhole' || b.kind === 'quasar') a /= Math.sqrt(Math.max(1e-9, 1 - b.R / d)); g.addScaledVector(r, a / d); if (a > ta) { ta = a; top = b; } }
+  for (const b of bodies) { const r = b.pos.clone().sub(P.pos), d = r.length(); if (d < b.R * .5) continue; let a = GN * (b.mass ||= bodyMass(b)) / (d * d); if (b.kind === 'blackhole' || b.kind === 'quasar') a /= Math.sqrt(Math.max(1e-9, 1 - b.R / d)); g.addScaledVector(r, a / d); if (a > ta) { ta = a; top = b; } }
   const a = g.length(); GH.a = a; GH.b = top; if (a < .05) return; GH.n.copy(g).divideScalar(a); const hold = Math.min(a, HOLDMAX); GH.hold = hold; GH.on = true;
   if (a > HOLDMAX) { GH.over = true; P.drift.addScaledVector(GH.n, (a - HOLDMAX) * dt); }
   GH.P = MASS * hold * C0; const e = GH.P * dt; GH.E += e; EN.total += e; st.spent = (st.spent || 0) + e; if (trip) trip.E += e;
