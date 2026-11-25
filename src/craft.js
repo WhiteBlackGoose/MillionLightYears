@@ -51,7 +51,7 @@ export function buildShip() {
     kick() { const s = shock.reduce((a, b) => b.t > a.t ? b : a); s.t = 0; },
     // a: {w, pow 0..1, sign, bank, pitch, state, alt, rel 0..1 (relativistic), lift 0..1, g gear index}
     animate(dt, a) {
-      const t = clock.value, acc = a.sign > 0 ? a.pow : 0, brk = a.sign < 0 ? a.pow : 0; st.pow = ease(st.pow, acc, dt, acc > st.pow ? 5 : 2); st.ch = ease(st.ch, acc > .3 ? 1 : 0, dt, 2.5); thrust.value = ease(thrust.value, st.pow, dt, 4);
+      const t = clock.value, acc = Math.max(0, -a.acc.z), brk = Math.max(0, a.acc.z); st.pow = ease(st.pow, acc, dt, acc > st.pow ? 5 : 2); st.ch = ease(st.ch, acc > .3 ? 1 : 0, dt, 2.5); thrust.value = ease(thrust.value, st.pow, dt, 4);
       if (last >= 0 && Math.floor(a.g) > last && a.g >= 2) ship.kick(); last = Math.floor(a.g);
       const landed = a.state === 'landed' || a.state === 'walk', low = a.state === 'descend' || (a.state === 'fly' && a.alt < 90 && a.w < 90); st.spread = ease(st.spread, landed ? .12 : st.ch > .5 ? .66 : 1, dt, landed ? 1.6 : 2.6); st.gear = ease(st.gear, landed || low ? 1 : 0, dt, 2.2);
       for (const f of feathers) { const s = f.s, k = f.k, sp = st.spread, wob = Math.sin(t * 1.3 + k) * .012; f.piv.rotation.set(0, -s * (1 - sp) * (1.18 - k * .12) - s * k * .12 * sp, s * ((sp - .8) * .12 + k * .13 * sp + a.bank * s * .1 + wob + (landed ? .35 : 0))); } const T = [feathers[0], feathers[3]]; T.forEach((f, i) => { f.piv.updateMatrix(); tips[i].copy(f.tip).applyMatrix4(f.piv.matrix); beacons[i].position.copy(tips[i]); });
