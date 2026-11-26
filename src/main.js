@@ -326,7 +326,7 @@ function motionStep(first) { const t = st.earthT || 0, main = sys.main; for (con
     if (b.parent) { b.pos.copy(b.orbR).applyAxisAngle(b.orbN, (b.orbW * t) % TAU).add(b.parent.pos); b.vel.crossVectors(b.orbN, b.pos.clone().sub(b.parent.pos)).multiplyScalar(b.orbW).add(b.parent.vel); }
     if (b.spinW) { b.spinQ.setFromAxisAngle(b.spinAx, (b.spinW * t) % TAU); b.terrain?.setSpin(b.spinQ); if (b.u?.uSpin) b.u.uSpin.value = (b.spinW * t) % TAU; }
     if (b.sunDir && b !== main) b.sunDir.copy(main.pos).sub(b.pos).normalize(); if (first) { b.prev.copy(b.pos); b.spinQp.copy(b.spinQ); } }
-  for (const s of [site, land]) if (s?.db) { s.d.copy(s.db).applyQuaternion(s.b.spinQ); if (s.pos) s.pos.copy(s.b.pos).addScaledVector(s.d, s.b.R + s.b.terrain.height(s.d)); } }
+  for (const s of [site, land]) if (s?.db) { s.d.copy(s.db).applyQuaternion(s.b.spinQ); if (s.pos) s.pos.copy(s.b.pos).addScaledVector(s.d, s.b.R + (s.b.terrain ? s.b.terrain.height(s.d) : 0)); } }
 // carry the ship along with its reference; in the air or on the ground it also turns with the surface
 function rideStep() { const r = P.ref; if (!r || !r.prev || hole || dead) return; const hh = P.pos.distanceTo(r.pos) - r.R, corot = r.spinW && (P.state !== 'fly' || (r.atm ? hh < r.atm.top : hh < r.R * .05 + 5000));
   if (corot) { const q = r.spinQ.clone().multiply(r.spinQp.clone().invert()); for (const p of [P.pos, walk.pos]) p.sub(r.prev).applyQuaternion(q).add(r.pos); P.q.premultiply(q); D.applyQuaternion(q); F.applyQuaternion(q); walk.fwd.applyQuaternion(q); camBase.premultiply(q); }
