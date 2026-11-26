@@ -22,10 +22,10 @@ export function makeStar(b) {
 }
 export function makeGas(b) {
   const g = new THREE.Group(), off = { value: V() }, a = b.atm; b.group = g;
-  const u = { uOff: off, uCamP: { value: V() }, uTau: { value: a.tau }, uMie: { value: a.mie }, uSunDir: { value: b.sunDir }, uSunCol: { value: b.sunCol }, uRk: { value: b.R / 1e3 }, uHk: { value: a.H / 1e3 }, uTop: { value: (b.R + a.top) / 1e3 }, uHasAtm: { value: 1 }, uFog: { value: 0 }, uFogC: { value: V() }, uFlash: { value: 0 }, uSeed: { value: b.seed % 50 }, uA: { value: b.pal[0] }, uB: { value: b.pal[1] }, uD: { value: b.pal[2] }, uRing: { value: b.ring ? 1 : 0 }, uUp: { value: b.up } }; b.u = u;
-  g.add(proxy(u, b.R * 1.02, NOISE + REL + ATM + RINGD + /* glsl */`varying vec3 vP;uniform float uSeed,uTime,uRing;uniform vec3 uA,uB,uD,uUp;
+  const u = { uOff: off, uCamP: { value: V() }, uTau: { value: a.tau }, uMie: { value: a.mie }, uSunDir: { value: b.sunDir }, uSunCol: { value: b.sunCol }, uRk: { value: b.R / 1e3 }, uHk: { value: a.H / 1e3 }, uTop: { value: (b.R + a.top) / 1e3 }, uHasAtm: { value: 1 }, uFog: { value: 0 }, uFogC: { value: V() }, uFlash: { value: 0 }, uSeed: { value: b.seed % 50 }, uA: { value: b.pal[0] }, uB: { value: b.pal[1] }, uD: { value: b.pal[2] }, uRing: { value: b.ring ? 1 : 0 }, uUp: { value: b.up }, uSpin: { value: 0 } }; b.u = u;
+  g.add(proxy(u, b.R * 1.02, NOISE + REL + ATM + RINGD + /* glsl */`varying vec3 vP;uniform float uSeed,uTime,uRing,uSpin;uniform vec3 uA,uB,uD,uUp;
    void main(){vec3 d=unab(normalize(vP));vec2 h=sph(uCamP,d,uRk);float t=h.x;if(h.y<=0.||h.x>h.y)discard;if(t<0.)t=.02;vec3 pk=uCamP+d*t,N=normalize(pk),q0;
-    vec3 X=normalize(cross(uUp,vec3(.31,.2,.9))),Z=cross(X,uUp);vec3 p=vec3(dot(N,X),dot(N,uUp),dot(N,Z));vec3 q=p+uSeed;float lat=p.y,tt=uTime*.004;
+    vec3 X0=normalize(cross(uUp,vec3(.31,.2,.9))),Z0=cross(X0,uUp),X=X0*cos(uSpin)+Z0*sin(uSpin),Z=cross(X,uUp);vec3 p=vec3(dot(N,X),dot(N,uUp),dot(N,Z));vec3 q=p+uSeed;float lat=p.y,tt=uTime*.004;
     float near=smoothstep(uRk*.25,uRk*.01,t);
     vec3 w=vec3(fbm(q*vec3(2.,7.,2.)+tt,4),fbm(q*vec3(3.,9.,3.)-tt,4),0.);float s=lat*7.+w.x*1.6+sin(lat*23.)*.25;float b=fbm(vec3(s*1.1,uSeed,w.y*.8),4)*1.6+.5;
     float fine=fbm(vec3(q.x*4.,lat*34.+w.x*7.,q.z*4.)+w.y*3.,5);if(near>.01)fine+=near*.6*fbm(vec3(q.x*60.,lat*260.+w.x*60.,q.z*60.)+fine*4.,4);

@@ -9,12 +9,12 @@ export class Galaxies {
   constructor() {
     const q = new THREE.PlaneGeometry(2, 2, 4, 4), g = this.g = new THREE.InstancedBufferGeometry(); g.index = q.index; g.setAttribute('position', q.attributes.position); this.at = {};
     for (const [k, n] of [['aP', 4], ['aX', 3], ['aY', 3], ['aZ', 3], ['aT', 4]]) { const a = this.at[k] = new THREE.InstancedBufferAttribute(new Float32Array(MAX * n), n); g.setAttribute(k, a); } g.instanceCount = 0;
-    this.u = { ...skyU, uN: { value: noiseTexture() }, uShift: { value: V() }, uPix: { value: .001 }, uVolF: { value: 1 } };
-    this.mesh = new THREE.Mesh(g, mat({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: this.u, vertexShader: REL + /* glsl */`attribute vec4 aP,aT;attribute vec3 aX,aY,aZ;uniform vec3 uShift;uniform float uPix;varying vec3 vP,vO,vA,vB,vC;varying vec4 vT;varying float vF;
+    this.u = { ...skyU, uN: { value: noiseTexture() }, uShift: { value: V() }, uPix: { value: .001 }, uVolF: { value: 1 }, uCs: { value: CELL } };
+    this.mesh = new THREE.Mesh(g, mat({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: this.u, vertexShader: REL + /* glsl */`attribute vec4 aP,aT;attribute vec3 aX,aY,aZ;uniform vec3 uShift;uniform float uPix,uCs;varying vec3 vP,vO,vA,vB,vC;varying vec4 vT;varying float vF;
       void main(){vec3 p=aP.xyz-uShift;float R=aP.w,d=length(p);vec3 n=p/d;vec3 rt=normalize(cross(n,abs(n.y)<.95?vec3(0,1,0):vec3(1,0,0))),up=cross(rt,n);
        float k=d/R;float s=1.25*k/sqrt(max(k*k-1.5625,.05));s=max(s,k*uPix*4.5);
        vec3 w=n*k+(rt*position.x+up*position.y)*s;vec3 a=aberr(w);vP=a;vO=vec3(dot(aX,-n),dot(aY,-n),dot(aZ,-n))*k;vA=aX;vB=aY;vC=aZ;vT=aT;
-       vF=smoothstep(1.1,1.5,k)*smoothstep(${((RC + .6) * CELL).toExponential()},${((RC - .6) * CELL).toExponential()},d);
+       vF=smoothstep(1.1,1.5,k)*smoothstep(${(RC + .6).toFixed(1)}*uCs,${(RC - .6).toFixed(1)}*uCs,d);
        gl_Position=vF<.002?vec4(2.,2.,2.,1.):projectionMatrix*vec4(mat3(viewMatrix)*normalize(a)*100.,1.);gl_Position.z=gl_Position.w;}`,
       fragmentShader: 'precision highp sampler3D;\n' + REL + SKYFN + /* glsl */`varying vec3 vP,vO,vA,vB,vC;varying vec4 vT;varying float vF;uniform sampler3D uN;uniform float uPix,uVolF;
       void main(){vec3 rd=unab(normalize(vP)),rl=vec3(dot(vA,rd),dot(vB,rd),dot(vC,rd)),ro=vO;float L=length(ro),pb=dot(ro,rl);if(pb>0.)discard;vec3 pr=ro-pb*rl;float b2=dot(pr,pr);vec3 e;float big=smoothstep(9.,2.,L);
@@ -32,8 +32,8 @@ export class Galaxies {
   }
   // p: universe position in light years
   update(uni, p, pix, vol = 1) { this.u.uVolF.value = vol;
-    const X = Math.round(p.x / CELL), Y = Math.round(p.y / CELL), Z = Math.round(p.z / CELL), key = uni.seed + ':' + X + ',' + Y + ',' + Z; this.u.uPix.value = pix;
-    if (key !== this.key && performance.now() - (this.t || 0) > 160) { this.t = performance.now(); this.key = key; this.base = [X * CELL, Y * CELL, Z * CELL]; let n = 0; const A = this.at; if (uni.cells.size > 6000) { const h = uni.cell(0, 0, 0); uni.cells.clear(); uni.cells.set('0,0,0', h); }
+    const C = CELL * uni.a, X = Math.round(p.x / C), Y = Math.round(p.y / C), Z = Math.round(p.z / C), key = uni.seed + ':' + X + ',' + Y + ',' + Z + ':' + Math.round(Math.log(uni.a) * 2e4); this.u.uCs.value = C; this.u.uPix.value = pix;
+    if (key !== this.key && performance.now() - (this.t || 0) > 160) { this.t = performance.now(); this.key = key; this.base = [X * C, Y * C, Z * C]; let n = 0; const A = this.at; if (uni.cells.size > 6000) { const h = uni.cell(0, 0, 0); uni.cells.clear(); uni.cells.set('0,0,0', h); }
       for (let a = -RC; a <= RC; a++) for (let b = -RC; b <= RC; b++) for (let c = -RC; c <= RC; c++) for (const G of uni.cell(X + a, Y + b, Z + c)) { if (n >= MAX) break; A.aP.setXYZW(n, G.pos[0] - this.base[0], G.pos[1] - this.base[1], G.pos[2] - this.base[2], G.R); const m = G.m; A.aX.setXYZ(n, m[0], m[1], m[2]); A.aY.setXYZ(n, m[3], m[4], m[5]); A.aZ.setXYZ(n, m[6], m[7], m[8]); A.aT.setXYZW(n, G.arms, G.wind, G.ell, G.seed % 17); n++; }
       for (const k in A) A[k].needsUpdate = true; this.g.instanceCount = this.n = n; }
     if (this.base) this.u.uShift.value.set(p.x - this.base[0], p.y - this.base[1], p.z - this.base[2]);

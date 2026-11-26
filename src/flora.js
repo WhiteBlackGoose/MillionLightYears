@@ -72,13 +72,13 @@ export class Props {
       add(tuft(), { vc: 1, color: leaf.clone().lerp(col(body.B[1]), .45).offsetHSL(0, 0, .04), wind: .12, ds: 1, tex: false }, { g: 2, cell: 1.15, rad: 27, p: .85, s: [.25, .75], pow: 1.2, wet: [.4, 1.2], slope: .4, max: 2300, seedK: 80 });
     }
   }
-  update(cam, body, alt, speed) {
+  update(camW, body, alt, speed) { const cam = body?.terrain ? camW.clone().applyQuaternion(body.terrain.qi) : camW;
     const on = body && body.terrain && alt < 900; this.group.visible = !!on; if (!on) return; if (this.body !== body) this.setup(body); const R = body.R, c = cam.clone().normalize(), now = performance.now();
-    if (body.atm) { const a = body.atm, t = a.tau, m = Math.max(t.x, t.y, t.z), d = Math.max(0, Math.min(1, c.dot(body.sunDir) * 1.6 + .25)); this.env.haze.value.setRGB((.25 + t.x / m * .4) * body.sunCol.x * d * .8, (.25 + t.y / m * .4) * body.sunCol.y * d * .8, (.25 + t.z / m * .4) * body.sunCol.z * d * .8); this.env.hazeK.value = Math.min(.0006, (m + a.mie) / a.H * .6); if (this.fogK > .0003) { this.env.hazeK.value = this.fogK; this.env.haze.value.copy(this.fogC || this.env.haze.value); } } else this.env.hazeK.value = 0;
+    if (body.atm) { const a = body.atm, t = a.tau, m = Math.max(t.x, t.y, t.z), d = Math.max(0, Math.min(1, camW.clone().normalize().dot(body.sunDir) * 1.6 + .25)); this.env.haze.value.setRGB((.25 + t.x / m * .4) * body.sunCol.x * d * .8, (.25 + t.y / m * .4) * body.sunCol.y * d * .8, (.25 + t.z / m * .4) * body.sunCol.z * d * .8); this.env.hazeK.value = Math.min(.0006, (m + a.mie) / a.H * .6); if (this.fogK > .0003) { this.env.hazeK.value = this.fogK; this.env.haze.value.copy(this.fogC || this.env.haze.value); } } else this.env.hazeK.value = 0;
     if (!this.base || this.base.distanceTo(cam) > 4000) { this.base = c.clone().multiplyScalar(R + body.terrain.height(c)); this.keys = {}; }
     for (const g of [0, 1, 2]) { if (g === 2 && (alt > 40 || speed > 70)) { for (const s of this.sets) if (s.g === 2) s.m.count = 0; this.keys[2] = ''; continue; } if (g === 0 && alt > 350) { for (const s of this.sets) if (s.g === 0) s.m.count = 0; this.keys[0] = ''; continue; }
       const [f, u, v] = dirFace(c.x, c.y, c.z), q = [9, 120, 5][g], k0 = Math.round(R * 1.5708 / q), key = [f, Math.floor((u + 1) / 2 * k0), Math.floor((v + 1) / 2 * k0)].join(); if (key === this.keys[g] || now - (this['t' + g] || 0) < [130, 500, 160][g]) continue; this.keys[g] = key; this['t' + g] = now; this.place(g, c, f, u, v, cam, body); }
-    this.group.position.copy(this.base).sub(cam);
+    this.group.quaternion.copy(body.terrain.q); this.group.position.copy(this.base).applyQuaternion(body.terrain.q).sub(camW);
   }
   place(g, c, f, u, v, cam, body) {
     const R = body.R, T = body.terrain, d = [0, 0, 0], o = {}, up = V(), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), pos = V(), memo = new Map(), reg = new Map(), seed = body.P.seed;
@@ -93,5 +93,6 @@ export class Props {
       s.m.count = s.n; s.m.instanceMatrix.needsUpdate = true; }
   }
   // push a sphere (body-relative position, radius) out of every solid thing; returns the strongest contact normal
-  collide(p, rad, minR = 0) { if (!this.group.visible || !this.base) return null; const q = V(); let hit = null; for (const s of this.sets) if (s.col) for (const c of s.col) { if (c.r < minR) continue; q.copy(p).sub(this.base).sub(c.p); const m = c.r + rad; if (Math.abs(q.x) > m + c.h || Math.abs(q.y) > m + c.h || Math.abs(q.z) > m + c.h) continue; const t = Math.max(0, Math.min(c.h, q.dot(c.u))); q.addScaledVector(c.u, -t); const d = q.length(); if (d < m && d > 1e-4) { q.divideScalar(d); p.addScaledVector(q, m - d); hit = q.clone(); } } return hit; }
+  collide(pW, rad, minR = 0) { const T = this.body?.terrain; if (!T) return null; const p = pW.clone().applyQuaternion(T.qi), h = this.collideB(p, rad, minR); pW.copy(p.applyQuaternion(T.q)); return h && h.applyQuaternion(T.q); }
+  collideB(p, rad, minR = 0) { if (!this.group.visible || !this.base) return null; const q = V(); let hit = null; for (const s of this.sets) if (s.col) for (const c of s.col) { if (c.r < minR) continue; q.copy(p).sub(this.base).sub(c.p); const m = c.r + rad; if (Math.abs(q.x) > m + c.h || Math.abs(q.y) > m + c.h || Math.abs(q.z) > m + c.h) continue; const t = Math.max(0, Math.min(c.h, q.dot(c.u))); q.addScaledVector(c.u, -t); const d = q.length(); if (d < m && d > 1e-4) { q.divideScalar(d); p.addScaledVector(q, m - d); hit = q.clone(); } } return hit; }
 }

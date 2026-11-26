@@ -140,3 +140,8 @@ body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 
 
 #suit{position:absolute;right:384px;top:40%;transform:translateY(-50%);width:330px;padding:14px 18px;background:#07060cd0;border:1px solid #8fd0ff66;opacity:0;visibility:hidden;transition:opacity .4s;text-shadow:none}#suit.on{opacity:1;visibility:visible}#suit b{display:block;font:400 22px var(--disp);color:#bfe0ff;margin-bottom:8px}#suit dl{display:grid;grid-template-columns:110px 1fr;gap:2px 12px;font-size:12px}#suit dt{color:var(--dim)}#suit .good{color:#8ff0a4}#suit .warn{color:#ffc27a}#suit .bad{color:#ff8a7a}
 #suit{right:30px;top:370px;transform:none;width:320px}
+
+#speed em{display:block;font-style:normal;color:var(--dim);font-size:11px}
+#selbar{position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 12px;background:#07060cc8;border:1px solid #fff2;opacity:0;visibility:hidden;pointer-events:auto;cursor:default;white-space:nowrap}#selbar.on{opacity:1;visibility:visible}
+#selbar b{font:400 20px var(--disp);color:var(--amber)}#selbar span{color:var(--dim);margin-right:6px;font-size:12px}#selbar button{padding:6px 12px;margin:0;font-size:12px;background:transparent;color:var(--ink);border:1px solid #fff4}#selbar button kbd{margin:0 4px 0 0}#selbar button.act{background:var(--amber);color:#120b04;border-color:var(--amber)}#selbar button.act kbd{color:#120b04;border-color:#120b0466}
+#hole.on~#selbar{display:none}

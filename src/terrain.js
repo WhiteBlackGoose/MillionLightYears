@@ -22,28 +22,29 @@ vec3 scatter(vec3 o,vec3 d,float t0,float t1,int n,out vec3 T){float c=dot(d,uSu
  T=exp(-tau);return L*uSunCol*(length(o)>uTop?5.5:9.);}
 `;
 const CLOUD = /* glsl */`
-uniform sampler3D uN,uDA;uniform float uCov,uCF,uCSt,uCWarp,uCSoft,uCVort;uniform vec3 uCS,uCV[3];uniform float uTime;
+uniform mat3 uRotI;uniform sampler3D uN,uDA;uniform float uCov,uCF,uCSt,uCWarp,uCSoft,uCVort;uniform vec3 uCS,uCV[3];uniform float uTime;
 vec3 vortex(vec3 p){if(uCVort<.01)return p;for(int i=0;i<3;i++){vec3 c=uCV[i];float k=dot(p,c);if(k<.7)continue;float d=acos(clamp(k,-1.,1.));float a=uCVort*1.1*exp(-d*d*55.);p=p*cos(a)+cross(c,p)*sin(a)+c*k*(1.-cos(a));}return p;}
-float cloudD(vec3 n,float det){vec3 p=vortex(n);vec3 q=p*uCF*vec3(1.,uCSt,1.)+uCS+vec3(uTime*.00004,0.,uTime*.00002);vec4 a=texture(uN,q*.18),b=texture(uN,q*.6+(a.rgb-.5)*uCWarp);float v=a.r*.42+b.r*.36+b.g*.14;
+float cloudD(vec3 n,float det){vec3 p=vortex(uRotI*n);vec3 q=p*uCF*vec3(1.,uCSt,1.)+uCS+vec3(uTime*.00004,0.,uTime*.00002);vec4 a=texture(uN,q*.18),b=texture(uN,q*.6+(a.rgb-.5)*uCWarp);float v=a.r*.42+b.r*.36+b.g*.14;
  if(det>0.){vec4 c=texture(uDA,q*1.7+(b.rgb-.5)*uCWarp*.6);v+=(c.r-.5)*.3+(c.g-.3)*.1;}
  return smoothstep(.61-uCov*.36,.61-uCov*.36+uCSoft+.14,v);}
 `;
 // ---------- the body
+const ONE = new THREE.Vector3(1, 1, 1);
 export class Terrain {
   constructor(b) { // b: { P, pos, R, pal, atm, sunDir, sunCol, ... }
-    this.b = b; this.hf = makeHeight(b.P); this.group = new THREE.Group(); this.roots = []; this.frame = 0; this.count = 0;
+    this.b = b; this.q = new THREE.Quaternion(); this.qi = new THREE.Quaternion(); this.hf = makeHeight(b.P); this.group = new THREE.Group(); this.roots = []; this.frame = 0; this.count = 0;
     this.maxL = Math.max(1, Math.ceil(Math.log2(b.R * 1.5708 / (N - 1) / 1.1)));
     const a = b.atm, p = b.pal;
     this.u = { uN: { value: noiseTexture() }, uCamP: { value: V() }, uTau: { value: a ? a.tau : V() }, uMie: { value: a ? a.mie : 0 }, uSunDir: { value: b.sunDir }, uSunCol: { value: b.sunCol }, uRk: { value: b.R / 1e3 }, uHk: { value: a ? a.H / 1e3 : 1 }, uTop: { value: a ? (b.R + a.top) / 1e3 : 0 }, uHasAtm: { value: a ? 1 : 0 }, uFog: { value: 0 }, uFogC: { value: V() }, uFlash: { value: 0 },
       uC0: { value: p[0] }, uC1: { value: p[1] }, uC2: { value: p[2] }, uC3: { value: p[3] }, uSnow: { value: V(p[4].x, p[4].y, p[4].z) }, uWater: { value: b.water || V() }, uSea: { value: b.P.sea ? 1 : 0 }, uLava: { value: b.lava ? 1 : 0 }, uGlow: { value: b.glow || V() }, uHs: { value: b.hs }, uSnowL: { value: b.snowLine ?? 9 }, uWetk: { value: b.wet || 0 }, uLamp: { value: V() }, uLampI: { value: 0 },
-      ...detailU, ...shU, uFrozen: { value: b.frozen ? 1 : 0 }, uBm: { value: b.B }, uSt: { value: b.S }, uM1: { value: new THREE.Vector4(b.M.strK, b.M.strH, b.M.crack, b.M.rip) }, uM2: { value: new THREE.Vector4(b.M.vein, b.M.metal, b.M.gloss, b.M.patch) }, uLich: { value: b.M.lich }, uCSt: { value: a?.cStretch || 1 }, uCWarp: { value: a?.cWarp || .5 }, uCSoft: { value: a?.cSoft || .1 }, uCVort: { value: a?.cVort || 0 }, uCV: { value: a?.cV || [V(0, 1, 0), V(1, 0, 0), V(0, 0, 1)] }, uCBase: { value: a?.cBase || V(.5, .5, .5) }, uCTint: { value: a?.cloudC || V(1, 1, 1) }, uCov: { value: a ? a.cloud : 0 }, uCF: { value: a?.cloudF || 3 }, uCS: { value: V(b.P.seed % 13, b.P.seed % 7, b.P.seed % 5) } };
+      ...detailU, ...shU, uFrozen: { value: b.frozen ? 1 : 0 }, uBm: { value: b.B }, uSt: { value: b.S }, uM1: { value: new THREE.Vector4(b.M.strK, b.M.strH, b.M.crack, b.M.rip) }, uM2: { value: new THREE.Vector4(b.M.vein, b.M.metal, b.M.gloss, b.M.patch) }, uLich: { value: b.M.lich }, uCSt: { value: a?.cStretch || 1 }, uCWarp: { value: a?.cWarp || .5 }, uCSoft: { value: a?.cSoft || .1 }, uCVort: { value: a?.cVort || 0 }, uCV: { value: a?.cV || [V(0, 1, 0), V(1, 0, 0), V(0, 0, 1)] }, uCBase: { value: a?.cBase || V(.5, .5, .5) }, uCTint: { value: a?.cloudC || V(1, 1, 1) }, uCov: { value: a ? a.cloud : 0 }, uRotI: { value: new THREE.Matrix3() }, uCF: { value: a?.cloudF || 3 }, uCS: { value: V(b.P.seed % 13, b.P.seed % 7, b.P.seed % 5) } };
     this.mat = mat({ uniforms: this.u, vertexShader: REL + /* glsl */`attribute vec4 aux;attribute vec3 tile;varying vec3 vP,vN,vT,vW;varying vec4 vA;varying float vLW;
-      void main(){vec3 p=position+modelMatrix[3].xyz;vP=p;vN=normal;vT=tile;vA=aux;vec3 q=aberr(p);vW=q;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*q,1.);vLW=gl_Position.w;}`,
+      void main(){vec3 p=mat3(modelMatrix)*position+modelMatrix[3].xyz;vP=p;vN=mat3(modelMatrix)*normal;vT=tile;vA=aux;vec3 q=aberr(p);vW=q;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*q,1.);vLW=gl_Position.w;}`,
       fragmentShader: REL + 'precision highp sampler3D;\n' + ATM + CLOUD + SHGLSL + /* glsl */`
       uniform float uFrozen;varying vec3 vP,vN,vT,vW;varying vec4 vA;varying float vLW;uniform sampler3D uDB;uniform vec3 uC2,uC3,uSnow,uWater,uGlow,uLamp,uBm[6],uSt[4];uniform vec4 uM1,uM2;uniform float uSea,uLava,uHs,uSnowL,uLampI,uLich;
       void main(){float D=length(vP);vec3 pk=uCamP+vP*.001;vec3 up=normalize(pk),N=normalize(vN),Vw=-vP/D;
        float f1=smoothstep(90000.,12000.,D),f2=smoothstep(16000.,2500.,D),f3=smoothstep(1800.,300.,D),f4=smoothstep(260.,45.,D),f5=smoothstep(45.,8.,D);
-       vec4 m0=texture(uDA,up*5.),m1=texture(uDA,up*23.+m0.rgb*.15),a1=texture(uDA,vT/512.),a2=texture(uDA,vT/128.+a1.r*.05),a3=vec4(.5,.35,.3,.5),a4=a3,a5=a3,b2=texture(uDB,vT/128.),b3=vec4(.5,.5,.5,.45),b4=b3,b5=b3;vec3 gx=dFdx(vT),gy=dFdy(vT);
+       vec3 ub=uRotI*up;vec4 m0=texture(uDA,ub*5.),m1=texture(uDA,ub*23.+m0.rgb*.15),a1=texture(uDA,vT/512.),a2=texture(uDA,vT/128.+a1.r*.05),a3=vec4(.5,.35,.3,.5),a4=a3,a5=a3,b2=texture(uDB,vT/128.),b3=vec4(.5,.5,.5,.45),b4=b3,b5=b3;vec3 gx=dFdx(vT),gy=dFdy(vT);
        if(f3>0.){a3=textureGrad(uDA,vT/32.,gx/32.,gy/32.);b3=textureGrad(uDB,vT/32.,gx/32.,gy/32.);}if(f4>0.){a4=textureGrad(uDA,vT/8.,gx/8.,gy/8.);b4=textureGrad(uDB,vT/8.,gx/8.,gy/8.);}if(f5>0.){a5=textureGrad(uDA,vT/2.,gx/2.,gy/2.);b5=textureGrad(uDB,vT/2.,gx/2.,gy/2.);}
        float det=(m1.r-.5)*.4+(a1.r-.5)*.5*f1+(a2.r-.5)*.4*f2+(a3.r-.5)*.3*f3+(a4.r-.5)*.25*f4;
        float mh=clamp(.5+(b2.a-.45)*.5*f2+(b3.a-.45)*.6*f3+(b4.a-.45)*.6*f4+(b5.a-.45)*.4*f5,0.,1.);
@@ -153,8 +154,9 @@ export class Terrain {
   node(f, l, x, y) { const n = 1 << l, o = faceDir(f, -1 + (x + .5) * 2 / n, -1 + (y + .5) * 2 / n, [0, 0, 0]); return { f, l, x, y, dir: V(o[0], o[1], o[2]), size: this.b.R * 1.5708 / n, state: 0, kids: null, mesh: null, used: 0 }; }
   request(nd, pr) { if (nd.state) return; queue.push({ node: nd, pr, P: this.b.P, done: d => { if (this.dead) return; const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(d.pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3)); g.setAttribute('aux', new THREE.BufferAttribute(d.aux, 4)); g.setAttribute('tile', new THREE.BufferAttribute(d.tile, 3)); g.setIndex(idx); const m = nd.mesh = new THREE.Mesh(g, this.mat); m.frustumCulled = false; m.layers.enable(2); m.matrixAutoUpdate = false; m.matrixWorldAutoUpdate = false; m.visible = false; this.group.add(m); nd.state = 2; nd.used = this.frame; nd.hmax = d.hmax; nd.hmin = d.hmin; this.count++; } }); }
   // cam: camera position relative to body centre (metres, double)
+  setSpin(q) { this.q.copy(q); this.qi.copy(q).invert(); this.u.uRotI.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(this.qi)); }
   update(cam, fwd, pxPerRad, cosFov, inv) {
-    this.frame++; const d = cam.length(); this.u.uCamP.value.copy(cam).multiplyScalar(.001); if (this.px) this.px.uOff.value.copy(cam).multiplyScalar(-1);
+    this.frame++; const d = cam.length(); this.u.uCamP.value.copy(cam).multiplyScalar(.001); if (this.px) this.px.uOff.value.copy(cam).multiplyScalar(-1); const camW = cam; cam = cam.clone().applyQuaternion(this.qi); fwd = fwd.clone().applyQuaternion(this.qi);
     if (!this.roots.length) for (let f = 0; f < 6; f++) this.roots.push(this.node(f, 0, 0, 0));
     const R = this.b.R, hz = Math.acos(Math.min(1, (R + Math.min(0, this.b.hMin || 0)) / Math.max(d, R))) + Math.acos(R / (R + this.b.hMax)), cd = cam.clone().divideScalar(d), t = V(); let ready = true, tris = 0;
     const visit = nd => {
@@ -164,16 +166,16 @@ export class Terrain {
       if (nd.l > 0 && cd2 > rad * 1.3 && cosFov > -1) { const c = t.dot(fwd) / cd2, s = rad / cd2; if (Math.acos(Math.max(-1, Math.min(1, c))) - Math.asin(Math.min(1, s)) > cosFov) return; }
       const px = nd.size / dd * pxPerRad;
       if (px > 440 && nd.l < this.maxL) { if (!nd.kids) nd.kids = [0, 1, 2, 3].map(i => this.node(nd.f, nd.l + 1, nd.x * 2 + (i & 1), nd.y * 2 + (i >> 1))); let ok = true; for (const k of nd.kids) { k.used = this.frame; if (k.state !== 2) { ok = false; this.request(k, px / (1 + nd.l * .02)); } } if (ok) { for (const k of nd.kids) visit(k); return; } }
-      this.show(nd, cam); tris++;
+      this.show(nd, camW); tris++;
     };
     for (const m of this.vis || []) m.visible = false; this.vis = []; for (const r of this.roots) visit(r);
     this.ready = ready; this.drawn = tris; if (this.frame % 120 === 0) { for (const r of this.roots) this.prune(r); }
   }
-  show(nd, cam) { const m = nd.mesh, R = this.b.R, e = m.matrixWorld.elements; e[12] = nd.dir.x * R - cam.x; e[13] = nd.dir.y * R - cam.y; e[14] = nd.dir.z * R - cam.z; m.visible = true; this.vis.push(m); }
+  show(nd, cam) { const m = nd.mesh, R = this.b.R; m.matrixWorld.compose(nd.dir.clone().multiplyScalar(R).applyQuaternion(this.q).sub(cam), this.q, ONE); m.visible = true; this.vis.push(m); }
   drop(nd) { if (nd.mesh) { this.group.remove(nd.mesh); const g = nd.mesh.geometry; g.setIndex(null); g.dispose(); nd.mesh = null; this.count--; } nd.state = 0; if (nd.kids) { nd.kids.forEach(k => this.drop(k)); nd.kids = null; } }
   prune(nd) { if (!nd.kids) return; if (nd.kids.every(k => this.frame - k.used > 400 && k.state !== 1)) { nd.kids.forEach(k => this.drop(k)); nd.kids = null; } else nd.kids.forEach(k => this.prune(k)); }
-  height(dir) { const h = this.hf(dir.x, dir.y, dir.z, 2); return this.b.P.sea ? Math.max(0, h) : h; }
-  raw(dir) { return this.hf(dir.x, dir.y, dir.z, 2); }
+  height(dir) { dir = dir.clone().applyQuaternion(this.qi); const h = this.hf(dir.x, dir.y, dir.z, 2); return this.b.P.sea ? Math.max(0, h) : h; }
+  raw(dir) { dir = dir.clone().applyQuaternion(this.qi); return this.hf(dir.x, dir.y, dir.z, 2); }
   normal(dir, e = 4) { const a = V().crossVectors(dir, Math.abs(dir.y) < .9 ? V(0, 1, 0) : V(1, 0, 0)).normalize(), b = V().crossVectors(dir, a), p = q => { const u = q.clone().normalize(); return u.multiplyScalar(this.b.R + this.height(u)); }, k = e / this.b.R; const o = p(dir), x = p(dir.clone().addScaledVector(a, k)).sub(o), y = p(dir.clone().addScaledVector(b, k)).sub(o); const n = x.cross(y).normalize(); return n.dot(dir) < 0 ? n.negate() : n; }
   dispose() { this.dead = true; this.roots.forEach(r => this.drop(r)); this.group.traverse(o => { if (o.material) o.material.dispose(); }); this.mat.dispose(); }
 }
