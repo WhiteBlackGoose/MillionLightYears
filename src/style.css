@@ -131,3 +131,4 @@ body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 
 #toast{bottom:136px}#land{bottom:166px}#grav{bottom:206px}
 
 #fromstart{margin-top:2px!important;color:#ffd9a8!important}
+#report.on~#banner{top:50%}
