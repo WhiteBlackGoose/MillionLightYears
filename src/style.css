@@ -128,3 +128,4 @@ body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 
 #speccap{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);font-size:10.5px;color:var(--dim);letter-spacing:.06em;text-shadow:0 0 6px #000;white-space:nowrap}#spectrum{bottom:34px}
 
 #clocks .warp b{color:#ff9a6a}#clocks .warp em{color:#ffb99a}
+#toast{bottom:136px}#land{bottom:166px}#grav{bottom:206px}
