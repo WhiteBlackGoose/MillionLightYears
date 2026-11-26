@@ -321,7 +321,7 @@ function rideStep() { const r = P.ref; if (!r || !r.prev || hole || dead) return
   else { const d = r.pos.clone().sub(r.prev); P.pos.add(d); walk.pos.add(d); } }
 function matchRef(b, auto) { if (b === P.ref) { if (!auto) say(`Already matched with ${b ? b.name : sys.name}`); return; } const vO = P.ref?.vel || V(), vN = b?.vel || V(), dv = vO.distanceTo(vN), E = kinetic(dv); P.ref = b; if (dv > .01) { EN.total += E; st.spent = (st.spent || 0) + E; if (trip) trip.E += E; ENG.copy(vN).sub(vO).setLength(Math.min(AMAX, dv * 4)); } const nm = b ? b.name : sys.name; toast(`${auto ? 'Entering the frame of' : 'Velocity matched with'} ${nm}: Δv ${dist(dv)}/s, ${si(E, 'J').replace(/<[^>]+>/g, '')}`); say(`Velocity matched with ${nm}`); }
 let tracking = null, autoNear = null;
-function track(t) { if (tracking && (!t || tracking === t)) { tracking = null; toast('Tracking off'); say('Tracking off'); return; } if (!t) return; tracking = t; glide = false; toast('Tracking ' + t.name); say(`Tracking ${t.name}`); }
+function track(t) { if (tracking && (!t || tracking === t)) { tracking = null; head = null; toast('Tracking off'); say('Tracking off'); return; } if (!t) return; tracking = t; glide = false; toast('Tracking ' + t.name); say(`Tracking ${t.name}`); }
 // ---------- clocks. Ship time is the ship's proper time. The crew sleeps in cryo above 10 g and their clock stops then.
 const CRYO = 10, CREW = { frozen: false, calm: 0, g: 0 };
 const legStart = () => { st.leg = { ship: st.shipT, crew: st.crewT, earthT: st.earthT }; };
@@ -389,7 +389,7 @@ function simulate(dt) {
   if (escW !== null) want = escW;
   if (gaze || dead || P.state !== 'fly') want = 0;
   if (ctl && nb && alt < Math.min(60000, nb.R * .2) && !roll) { const u = upAt(nb, P.pos), r = V(1, 0, 0).applyQuaternion(P.q), f = V(0, 0, -1).applyQuaternion(P.q); if (Math.abs(f.dot(u)) < .9) roll = -r.dot(u) * .9; } // gently level with the horizon
-  if (tracking && tracking !== target) tracking = null;
+  if (tracking && tracking !== target) { tracking = null; head = null; }
   if (tracking && ctl && !glide && steerT < 0) { const tp = tracking.star ? starRel(tracking.star, V()) : tracking.pos.clone(); tp.sub(P.pos); if (tp.lengthSq() > 1) head = tp.normalize(); }
   if (!ctl) { head = null; steerT = -1; }
   if (head && !glide) { const f = V(0, 0, -1).applyQuaternion(P.q), ax = V().crossVectors(f, head), s = ax.length(), a = Math.atan2(s, f.dot(head)); if (a < .0015) { if (steerT < 0) head = null; } else { if (s < 1e-6) ax.set(0, 1, 0).applyQuaternion(P.q); else ax.divideScalar(s); const st = Math.min(a, Math.min(a * 3.2, 1.2) * dt); yaw = -Math.max(-1, Math.min(1, V(1, 0, 0).applyQuaternion(P.q).dot(head) * 2.5)) * .999; P.q.premultiply(dq.setFromAxisAngle(ax, st)).normalize(); } }
