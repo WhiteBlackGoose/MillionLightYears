@@ -197,7 +197,7 @@ const speedAt = g => { if (g <= 1) return Math.max(0, g) * CRUISE; const i = Mat
 const ROTT = 3600, phys = (w, c, s) => c > 0 ? Math.max(turnResult(w / C0, c, s) * C0, Math.min(w, AMAX * ROTT / Math.max(Math.atan2(s, c), 1e-12))) : 0;
 function afterTurn(w, c, s) { if (w <= LOWV) return w; const a = Math.atan2(s, c), f = c <= 0 ? 0 : Math.pow(1 - a / (Math.PI / 2), 4); return Math.min(w, Math.max(CRUISE, Math.min(speedAt(1 + (gearAt(w) - 1) * f), phys(w, c, s)))); }
 const turnAngle = (a, b) => [a.dot(b), tmp2.crossVectors(a, b).length()];
-function unlock() { if (locked) { locked = false; if (!glide) hold = null; turn = { w0: P.w, from: D.clone(), goal: P.w }; } }
+function unlock() { if (locked) { locked = false; turn = { w0: P.w, from: D.clone(), goal: P.w }; } }
 function steerOn(real) { coast = false; if (tracking) { tracking = null; toast('Tracking off'); } escapeG = null; head = cursorDir(real); if (glide) { glide = false; toast('Autopilot off'); } }
 function pickHover() {
   if (P.state !== 'fly' || gaze || inside) return null; const n = cursorDir(true);
@@ -292,7 +292,7 @@ function scanBodies() { // materialise what is big enough to see, rank the neare
   for (const b of bodies) { const d = b.pos.distanceTo(P.pos), a = b.R / d; const lim = b.kind === 'quasar' || b.kind === 'blackhole' ? 4e-5 : b.kind === 'pulsar' ? 2e-6 : b.kind === 'star' ? 6e-4 : .0014; if (a > lim && !b.group) { materialize(b); sysG.add(b.group); } else if (a < lim * .5 && b.group) dematerialize(b); let s = d - b.R; if (b.terrain && a > .25) { const u = upAt(b, P.pos); s -= b.terrain.height(u); } list.push({ name: b.name, d: Math.max(0, s), b }); const eff = b.kind === 'blackhole' || b.kind === 'quasar' ? Math.max(0, d - b.R * .5) : s; if (eff < nearD) nearD = eff; if ((b.kind === 'rock' || b.kind === 'gas') && s < best && d < b.R * 4 + 4e5) { best = s; nb = b; } }
   alt = nb ? best : Infinity; return list;
 }
-function endTurn() { const t = turn; const was = t ? gearAt(t.w0) : 0; lockCourse(); D.copy(F); if (glide || !t) return; const g = gearAt(P.w); if (!hold || hold.w > P.w * 1.02) { if (g >= 1.98) { const n = Math.max(2, Math.min(TOP, Math.floor(g + .05))); hold = { n, w: Math.min(SET[n][0], P.w), t: SET[n][1], auto: true }; } else { hold = { n: 1, w: CRUISE, t: SET[1][1], auto: true }; P.thr = 1; } } if (was - g > .4) toast(`Course changed, down to ${g < 1 ? 'cruise' : 'gear ' + gearName(Math.max(1, Math.floor(g + .05)))}`); }
+function endTurn() { const t = turn; const was = t ? gearAt(t.w0) : 0; lockCourse(); D.copy(F); if (glide || !t) return; const g = gearAt(P.w); if (t.goal < t.w0 * .98 && (!hold || hold.w > P.w * 1.02)) { if (g >= 1.98) { const n = Math.max(2, Math.min(TOP, Math.floor(g + .05))); hold = { n, w: Math.min(SET[n][0], P.w), t: SET[n][1], auto: true }; } else { hold = { n: 1, w: CRUISE, t: SET[1][1], auto: true }; P.thr = 1; } } if (was - g > .4) toast(`Course changed, down to ${g < 1 ? 'cruise' : 'gear ' + gearName(Math.max(1, Math.floor(g + .05)))}`); }
 // engine thrust in the ship's own axes (x right, y up, z back), 0 to 1 each way. Nothing when velocity is constant.
 const ACC = V(), ENG = V(), FELT = V(), vPrev = V(); let vSkip = true;
 function thrustStep(dt, drag) { const eta = rapidity(P.w), v = D.clone().multiplyScalar(eta), dv = v.clone().sub(vPrev), speed0 = Math.sinh(vPrev.length()) * C0; vPrev.copy(v); if (vSkip || (P.state !== 'fly' && P.state !== 'descend') || gaze || dead || hole) { vSkip = false; ACC.set(0, 0, 0); if (P.state !== 'descend') ENG.set(0, 0, 0); return; }
@@ -407,7 +407,7 @@ function simulate(dt) {
   P.roll += (bank * .75 - P.roll) * (1 - Math.exp(-dt * 4)); eul.set(pitch * 1.25 * dt, yaw * 1.25 * dt, roll * 1.7 * dt); dq.setFromEuler(eul); P.q.multiply(dq).normalize(); F.set(0, 0, -1).applyQuaternion(P.q);
   if (hole) { holeStep(dt); D.copy(F); lastList = list; EN.skip = true; EN.last = 0; vSkip = true; ACC.set(0, 0, 0); { const k = keys.ShiftLeft || keys.ShiftRight ? .9 : keys.KeyW ? .4 : 0; ACC.z = -k; } weatherStep(dt, 0, false, 0, V()); camera(dt, V()); return; }
   const rate = leaving ? Math.min(1.4, GENTLE / Math.max(1, Math.abs(want - P.w))) : want > P.w ? (boost || glide ? 1.1 : 1.6) : brake || stop || (hold && !boost && P.w > Math.max(hold.w, 120) * 1.1) ? 5.5 : glide || inAir ? 3 : 1.7; P.dEta = null;
-  if (P.w > LOWV && P.state === 'fly' && !gaze && !dead) { const [c, s] = turnAngle(D, F); if (locked && (steering ? s > 1e-9 || c < 0 : glide && (s > .03 || c < 0))) unlock(); }
+  if (P.w > LOWV && P.state === 'fly' && !gaze && !dead) { const [c, s] = turnAngle(D, F); const big = s > .02 || c < 0 || Math.atan2(s, c) * P.w / AMAX > ROTT; if (locked && big && (steering || (glide && (s > .03 || c < 0)))) unlock(); }
   const slow = P.w <= LOWV;
   const aiming = !!head && steerT <= .25 && turnAngle(F, head)[1] > .12 || (!!head && steerT <= .25 && F.dot(head) < 0), goal = head && steerT <= .25 ? head : F;
   if (P.state === 'descend') { /* flown by the landing computer */ }
@@ -422,7 +422,7 @@ function simulate(dt) {
     const [c2, s2] = turnAngle(D, F); if (glide && c2 > 0 && s2 < .004) endTurn(); else if (!steering && c2 > 0 && s2 < .012 && (glide || !turn || P.w < turn.goal * 1.03)) endTurn();
   } else if (slow && P.state === 'fly') { // ordinary flight: thrusters push the velocity vector round, so the ship drifts a little
     if (!locked) endTurn(); const v = D.clone().multiplyScalar(P.w), k = 1 - Math.exp(-dt * (want > LOWV ? rate : Math.max(rate, inAir ? 3 : 2))), dv = F.clone().multiplyScalar(want).sub(v).multiplyScalar(k); if (want <= LOWV && !boost && !escapeG && dv.length() > GENTLE * dt) dv.setLength(GENTLE * dt); v.add(dv); P.w = v.length(); if (P.w > 1e-6) D.copy(v).divideScalar(P.w); else D.copy(F); if (P.w > LOWV) lockCourse();
-  } else { const e0 = rapidity(P.w), e1 = rapidity(Math.max(0, want)), cap = AMAX * dt / C0, step = Math.max(-cap * Wlim, Math.min(cap * Wlim, (e1 - e0) * (1 - Math.exp(-dt * rate)))); W = Math.min(Math.max(W, Math.abs(step) / cap), Math.max(Wlim, 1)); P.w = Math.sinh(e0 + step) * C0; if (locked) D.copy(F); }
+  } else { const e0 = rapidity(P.w), e1 = rapidity(Math.max(0, want)), cap = AMAX * dt / C0, step = Math.max(-cap * Wlim, Math.min(cap * Wlim, (e1 - e0) * (1 - Math.exp(-dt * rate)))); W = Math.min(Math.max(W, Math.abs(step) / cap), Math.max(Wlim, 1)); P.w = Math.sinh(e0 + step) * C0; if (locked) { const [c, s] = turnAngle(D, F), ang = Math.atan2(s, c), mr = AMAX * dt * W / Math.max(P.w, 1); if (ang <= mr || P.w <= LOWV) D.copy(F); else { const ax = V().crossVectors(D, F); if (ax.lengthSq() > 1e-24) D.applyAxisAngle(ax.normalize(), mr); } } }
   if (ctl && !glide && !free && locked && !escapeG) P.w = Math.min(P.w, Math.max(cap * 1.4, 120)); if (P.w < .02 || (stop && P.w < .5)) { P.w = 0; D.copy(F); if (stop && P.drift.length() < .5) P.drift.set(0, 0, 0); }
   const mDir = matchV.clone().normalize().negate(), mA = matchStep(dt, inAir);
   thrustStep(dt * W, inAir && P.w > 260 && !brake && want < P.w);
