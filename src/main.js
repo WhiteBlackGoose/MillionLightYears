@@ -420,8 +420,8 @@ function simulate(dt) {
   if (ctl && !glide && !free && locked && !escapeG) P.w = Math.min(P.w, Math.max(cap * 1.4, 120)); if (P.w < .02 || (stop && P.w < .5)) { P.w = 0; D.copy(F); if (stop && P.drift.length() < .5) P.drift.set(0, 0, 0); }
   const mDir = matchV.clone().normalize().negate(), mA = matchStep(dt, inAir);
   thrustStep(dt * W, inAir && P.w > 260 && !brake && want < P.w);
-  if (mA > 0) { EN.a = Math.max(EN.a, mA); ENG.copy(mDir).multiplyScalar(mA); ACC.copy(mDir.applyQuaternion(P.q.clone().invert())).multiplyScalar(Math.min(1, .08 + Math.log10(1 + mA / 8) / 8)); }
   energyStep(dt * W);
+  if (mA > 0) { EN.a = Math.max(EN.a, mA); ENG.copy(mDir).multiplyScalar(mA); ACC.copy(mDir.applyQuaternion(P.q.clone().invert())).multiplyScalar(Math.min(1, .08 + Math.log10(1 + mA / 8) / 8)); }
   // relativity: P.w is proper velocity (celerity), so speed stays below c while ship time shrinks every journey
   const cw = P.w / C0; gamma = Math.sqrt(1 + cw * cw); beta = cw / gamma; st.years += dt * W * gamma * (GH.dil || 1) / 3.156e7; st.earthT += dt * W * gamma * (GH.dil || 1); yearsShip += dt / 3.156e7;
   const gv = 1 + (gamma - 1) / (1 + (gamma - 1) / 2); const bv = Math.sqrt(Math.max(0, 1 - 1 / (gv * gv))); shared.uBeta.value += (bv - shared.uBeta.value) * (1 - Math.exp(-dt * 6)); if (shared.uBeta.value < 1e-3 && bv < 1e-3) shared.uBeta.value = 0; shared.uBDir.value.copy(D); shared.uLogG.value = Math.log(gamma);
