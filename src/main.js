@@ -329,6 +329,7 @@ function holeStep(dt) { const h = hole, b = h.b, u = P.pos.clone().sub(b.pos).no
   const dtau = dt / h.slow; h.t += dtau; fallStep(s, b.R, dtau); h.left = timeLeft(b.R, Math.max(s.x, 1e-6), s.E, s.L); if (s.x < .012 || h.left < 1e-9) return leaveHole();
   P.pos.copy(h.u0).applyAxisAngle(h.ax, s.phi).multiplyScalar(s.x * b.R).add(b.pos); if (b.uFall) b.uFall.value = 1; gamma = 1; beta = 0; shared.uBeta.value = 0; shared.uLogG.value = 0; const td = tidal(b.R, s.x * b.R) / 9.8; shake = Math.max(shake, Math.min(1.1, Math.max(0, Math.log10(td)) * .07)); post.u.uBend.value += (.12 - post.u.uBend.value) * dt * 2; }
 function simulate(dt) {
+  W = 1;
   P.inv -= dt; const ctl = !gaze && !dead && helpHidden() && mode === 'flight' && P.state === 'fly'; let pitch = 0, yaw = 0, roll = 0;
   const list = scanBodies(); galPos();
   // air
@@ -360,7 +361,6 @@ function simulate(dt) {
   const bank = yaw; if (head) yaw = 0; const steering = !!head || steerT >= 0 || pitch !== 0 || yaw !== 0;
   P.roll += (bank * .75 - P.roll) * (1 - Math.exp(-dt * 4)); eul.set(pitch * 1.25 * dt, yaw * 1.25 * dt, roll * 1.7 * dt); dq.setFromEuler(eul); P.q.multiply(dq).normalize(); F.set(0, 0, -1).applyQuaternion(P.q);
   if (hole) { holeStep(dt); D.copy(F); lastList = list; EN.skip = true; EN.last = 0; vSkip = true; ACC.set(0, 0, 0); { const k = keys.ShiftLeft || keys.ShiftRight ? .9 : keys.KeyW ? .4 : 0; ACC.z = -k; } weatherStep(dt, 0, false, 0, V()); camera(dt, V()); return; }
-  W = 1;
   const rate = leaving ? Math.min(1.4, GENTLE / Math.max(1, Math.abs(want - P.w))) : want > P.w ? (boost || glide ? 1.1 : 1.6) : brake || stop || (hold && !boost && P.w > Math.max(hold.w, 120) * 1.1) ? 5.5 : glide || inAir ? 3 : 1.7; P.dEta = null;
   if (P.w > LOWV && P.state === 'fly' && !gaze && !dead) { const [c, s] = turnAngle(D, F); if (locked && (steering ? s > 1e-9 || c < 0 : glide && (s > .03 || c < 0))) unlock(); }
   const slow = P.w <= LOWV;
