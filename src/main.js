@@ -187,12 +187,15 @@ function cursorDir(real, center) {
   if (real && B > 1e-4) { const D = shared.uBDir.value, c = n.dot(D), g = 1 / Math.sqrt(1 - B * B), q = n.clone().addScaledVector(D, -c); if (shared.uMeas.value > .5) n.copy(q).addScaledVector(D, c * g).normalize(); else { const k = 1 - B * c; n.copy(q).divideScalar(g * k).addScaledVector(D, (c - B) / k).normalize(); } } return n; }
 // course state: D is where the ship really moves, F where the nose points, head the heading the pilot asked for
 const D = V(0, 0, -1), LOWV = 3000; let coast = false, locked = true, head = null, steerT = -1, turn = null;
-function pointAt(t) { if (!t || P.state !== 'fly' || gaze || hole || leaving) return; const r = t.star ? starRel(t.star, V()) : t.pos.clone(); r.sub(P.pos); if (r.lengthSq() < 1) return; head = r.normalize(); steerT = -1; if (P.w > LOWV) { coast = true; unlock(); toast(`Nose on ${t.name}, still coasting. Pick a gear to burn that way`); } }
+// where a moving target will be when we get there (relative to our reference frame)
+function aimAt(t) { const p = t.star ? starRel(t.star, V()) : t.pos.clone(); if (!t.star && t.vel) { const d = p.distanceTo(P.pos), v = Math.max(P.w / Math.max(gamma, 1), hold ? SET[hold.n][0] / Math.sqrt(1 + (SET[hold.n][0] / C0) ** 2) : 0, 2000); p.addScaledVector(t.vel.clone().sub(P.ref?.vel || V()), Math.min(d / v, 3e7)); } return p; }
+function pointAt(t) { if (!t || P.state !== 'fly' || gaze || hole || leaving) return; const r = aimAt(t); r.sub(P.pos); if (r.lengthSq() < 1) return; head = r.normalize(); steerT = -1; if (P.w > LOWV) { coast = true; unlock(); toast(`Nose on ${t.name}, still coasting. Pick a gear to burn that way`); } }
 const lockCourse = () => { coast = false; locked = true; turn = null; D.copy(F); };
 const gearAt = w => { if (w < 1) return 0; if (w < CRUISE) return w / CRUISE; if (w >= SET[TOP][0]) return TOP; let lo = 1, hi = TOP; while (hi - lo > 1) { const c = lo + hi >> 1; if (SET[c][0] <= w) lo = c; else hi = c; } return lo + Math.log(w / SET[lo][0]) / Math.log(SET[lo + 1][0] / SET[lo][0]); };
 const speedAt = g => { if (g <= 1) return Math.max(0, g) * CRUISE; const i = Math.min(TOP - 1, Math.floor(g)); return SET[i][0] * Math.pow(SET[i + 1][0] / SET[i][0], g - i); };
 // speed left after a turn: gears fall with (1 - angle/90)^4 (45 degrees: 5.1 -> 2.1, 90 or more: cruise), or what relativity allows if that is less
-function afterTurn(w, c, s) { if (w <= LOWV) return w; const a = Math.atan2(s, c), f = c <= 0 ? 0 : Math.pow(1 - a / (Math.PI / 2), 4); return Math.min(w, Math.max(CRUISE, Math.min(speedAt(1 + (gearAt(w) - 1) * f), c > 0 ? turnResult(w / C0, c, s) * C0 : 0))); }
+const ROTT = 3600, phys = (w, c, s) => c > 0 ? Math.max(turnResult(w / C0, c, s) * C0, Math.min(w, AMAX * ROTT / Math.max(Math.atan2(s, c), 1e-12))) : 0;
+function afterTurn(w, c, s) { if (w <= LOWV) return w; const a = Math.atan2(s, c), f = c <= 0 ? 0 : Math.pow(1 - a / (Math.PI / 2), 4); return Math.min(w, Math.max(CRUISE, Math.min(speedAt(1 + (gearAt(w) - 1) * f), phys(w, c, s)))); }
 const turnAngle = (a, b) => [a.dot(b), tmp2.crossVectors(a, b).length()];
 function unlock() { if (locked) { locked = false; if (!glide) hold = null; turn = { w0: P.w, from: D.clone(), goal: P.w }; } }
 function steerOn(real) { coast = false; if (tracking) { tracking = null; toast('Tracking off'); } escapeG = null; head = cursorDir(real); if (glide) { glide = false; toast('Autopilot off'); } }
@@ -384,7 +387,7 @@ function simulate(dt) {
   const far = nearD > .05 * LY; const over = far ? 1 + Math.max(0, P.boostT - 4) ** 2 * 3 : 1; const dGal = galPos().length() - cur.R; let cap = Math.min(Math.max(400, dGal * .25) * LY, Math.max(70, nearD * .9 + 60) * over); const airCap = inAir ? 290 / (dens * Math.min(1.6, atm.press) + .012) : Infinity; cap = Math.min(cap, Math.max(airCap, 60));
   let want = Math.min(Math.max(120, Math.min(2500, alt * .12)) * P.thr, cap); const free = escW !== null && !!escapeG || hold && hold.n > 1 && !inAir && (far || P.w > LY); if (hold && !glide && hold.n !== 1) want = free ? hold.w : Math.min(hold.w, cap); if (boost) { want = cap; if (hold?.n < 2) hold = null; } if (brake) want = 0; const stop = hold?.n === 0 && !boost; if (stop) P.drift.multiplyScalar(Math.exp(-dt * 4));
   if (glide && target && ctl) {
-    if (target.star) { starRel(target.star, A); } else A.copy(target.pos);
+    if (target.star) { starRel(target.star, A); } else A.copy(target.pos.distanceTo(P.pos) > arrive(target) * 4 ? aimAt(target) : target.pos);
     const t0 = A.clone(), d = A.distanceTo(P.pos), arr = target.star ? (target.star.isGal ? target.star.G.R * 1.9 * LY : .004 * LY) : arrive(target), u = A.clone().sub(P.pos).divideScalar(d); let clr = Infinity;
     for (const b of bodies) if (b !== target) { const r = b.pos.clone().sub(P.pos), al = r.dot(u); const m = b.kind === 'rock' ? b.R * 1.3 + (b.atm ? b.atm.top : 0) : arrive(b) * .75; if (r.length() < m * 1.02 && b.kind === 'rock') { const up = r.clone().normalize().negate(); if (u.dot(up) < .75) { A.copy(P.pos).addScaledVector(up, d).addScaledVector(u, d * .35); clr = Math.min(clr, Math.max(0, r.length() - b.R) * 2 + 600); continue; } clr = Math.min(clr, Math.max(0, r.length() - b.R) * 3 + 600); continue; } if (al > 0 && al < d) { const off = u.clone().multiplyScalar(al).sub(r), ol = off.length(); if (ol < m) A.addScaledVector(ol < 1 ? V(0, 1, 0) : off.normalize(), m * 1.2 * Math.min(60, d / Math.max(al, 1))); clr = Math.min(clr, Math.max(0, r.length() - b.R * 1.05)); } else clr = Math.min(clr, Math.max(0, r.length() - b.R) * 3 + 2e4); }
     m4.lookAt(P.pos, A, V(0, 1, 0).applyQuaternion(P.q)); dq.setFromRotationMatrix(m4); P.q.slerp(dq, 1 - Math.exp(-dt * 2.2)); pitch = yaw = 0; const align = Math.max(0, V(0, 0, -1).applyQuaternion(P.q).dot(A.clone().sub(P.pos).normalize()));
@@ -397,7 +400,7 @@ function simulate(dt) {
   if (gaze || dead || P.state !== 'fly') want = 0;
   if (ctl && nb && alt < Math.min(60000, nb.R * .2) && !roll) { const u = upAt(nb, P.pos), r = V(1, 0, 0).applyQuaternion(P.q), f = V(0, 0, -1).applyQuaternion(P.q); if (Math.abs(f.dot(u)) < .9) roll = -r.dot(u) * .9; } // gently level with the horizon
   if (tracking && tracking !== target) { tracking = null; head = null; }
-  if (tracking && ctl && !glide && steerT < 0) { const tp = tracking.star ? starRel(tracking.star, V()) : tracking.pos.clone(); tp.sub(P.pos); if (tp.lengthSq() > 1) head = tp.normalize(); }
+  if (tracking && ctl && !glide && steerT < 0) { const tp = aimAt(tracking); tp.sub(P.pos); if (tp.lengthSq() > 1) head = tp.normalize(); }
   if (!ctl) { head = null; steerT = -1; }
   if (head && !glide) { const f = V(0, 0, -1).applyQuaternion(P.q), ax = V().crossVectors(f, head), s = ax.length(), a = Math.atan2(s, f.dot(head)); if (a < .0015) { if (steerT < 0) head = null; } else { if (s < 1e-6) ax.set(0, 1, 0).applyQuaternion(P.q); else ax.divideScalar(s); const st = Math.min(a, Math.min(a * 3.2, 1.2) * dt); yaw = -Math.max(-1, Math.min(1, V(1, 0, 0).applyQuaternion(P.q).dot(head) * 2.5)) * .999; P.q.premultiply(dq.setFromAxisAngle(ax, st)).normalize(); } }
   const bank = yaw; if (head) yaw = 0; const steering = !!head || steerT >= 0 || pitch !== 0 || yaw !== 0;
@@ -411,7 +414,7 @@ function simulate(dt) {
   else if (!locked && !slow && coast && !brake && !stop && P.state === 'fly') { /* nose on the waypoint, still on the old course */ }
   else if (!locked && !slow && !brake && !stop && P.state === 'fly') { // course change: first brake along the old course, then swing the velocity round at the lower speed
     const [c, s] = turnAngle(D, goal), ang = Math.atan2(s, c), cap = AMAX * dt / C0; if (turn && !glide) { const [c0, s0] = turnAngle(turn.from, goal); turn.goal = Math.min(turn.goal, afterTurn(turn.w0, c0, s0)); }
-    const vGoal = turn && !glide ? turn.goal : c > 0 ? turnResult(P.w / C0, c, s) * C0 : 0;
+    const vGoal = turn && !glide ? turn.goal : phys(P.w, c, s);
     if (P.w > vGoal * 1.003 + 1) { const e0 = rapidity(P.w), e1 = rapidity(vGoal), step = Math.min((e0 - e1) * (1 - Math.exp(-dt * 3)) + 1e-12, cap * Wlim); W = Math.min(Math.max(W, step / cap), Math.max(Wlim, 1)); P.w = Math.sinh(e0 - step) * C0; P.dEta = step; if (turn) turn.swing = false; }
     else if (ang > 1e-4) { const w = Math.max(P.w, 1); if (turn && !turn.swing) { turn.swing = true; const E = kinetic(2 * w * Math.sin(ang / 2)); EN.total += E; st.spent = (st.spent || 0) + E; EN.burn += E; if (trip) trip.E += E; }
       // perpendicular proper acceleration a turns proper velocity w at a / w radians per second of ship time
