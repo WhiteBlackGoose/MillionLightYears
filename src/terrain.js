@@ -38,7 +38,7 @@ export class Terrain {
       uC0: { value: p[0] }, uC1: { value: p[1] }, uC2: { value: p[2] }, uC3: { value: p[3] }, uSnow: { value: V(p[4].x, p[4].y, p[4].z) }, uWater: { value: b.water || V() }, uSea: { value: b.P.sea ? 1 : 0 }, uLava: { value: b.lava ? 1 : 0 }, uGlow: { value: b.glow || V() }, uHs: { value: b.hs }, uSnowL: { value: b.snowLine ?? 9 }, uWetk: { value: b.wet || 0 }, uLamp: { value: V() }, uLampI: { value: 0 },
       ...detailU, ...shU, uFrozen: { value: b.frozen ? 1 : 0 }, uBm: { value: b.B }, uSt: { value: b.S }, uM1: { value: new THREE.Vector4(b.M.strK, b.M.strH, b.M.crack, b.M.rip) }, uM2: { value: new THREE.Vector4(b.M.vein, b.M.metal, b.M.gloss, b.M.patch) }, uLich: { value: b.M.lich }, uCSt: { value: a?.cStretch || 1 }, uCWarp: { value: a?.cWarp || .5 }, uCSoft: { value: a?.cSoft || .1 }, uCVort: { value: a?.cVort || 0 }, uCV: { value: a?.cV || [V(0, 1, 0), V(1, 0, 0), V(0, 0, 1)] }, uCBase: { value: a?.cBase || V(.5, .5, .5) }, uCTint: { value: a?.cloudC || V(1, 1, 1) }, uCov: { value: a ? a.cloud : 0 }, uCF: { value: a?.cloudF || 3 }, uCS: { value: V(b.P.seed % 13, b.P.seed % 7, b.P.seed % 5) } };
     this.mat = mat({ uniforms: this.u, vertexShader: REL + /* glsl */`attribute vec4 aux;attribute vec3 tile;varying vec3 vP,vN,vT,vW;varying vec4 vA;varying float vLW;
-      void main(){vec3 p=position+modelMatrix[3].xyz;vP=p;vN=normal;vT=tile;vA=aux;vec3 q=aberr(p);vW=q;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*q,1.);vLW=gl_Position.w;gl_Position.z=(2.*logd(vLW)-1.)*vLW;}`,
+      void main(){vec3 p=position+modelMatrix[3].xyz;vP=p;vN=normal;vT=tile;vA=aux;vec3 q=aberr(p);vW=q;gl_Position=projectionMatrix*vec4(mat3(viewMatrix)*q,1.);vLW=gl_Position.w;}`,
       fragmentShader: REL + 'precision highp sampler3D;\n' + ATM + CLOUD + SHGLSL + /* glsl */`
       uniform float uFrozen;varying vec3 vP,vN,vT,vW;varying vec4 vA;varying float vLW;uniform sampler3D uDB;uniform vec3 uC2,uC3,uSnow,uWater,uGlow,uLamp,uBm[6],uSt[4];uniform vec4 uM1,uM2;uniform float uSea,uLava,uHs,uSnowL,uLampI,uLich;
       void main(){float D=length(vP);vec3 pk=uCamP+vP*.001;vec3 up=normalize(pk),N=normalize(vN),Vw=-vP/D;
@@ -101,7 +101,7 @@ export class Terrain {
        float vein=uM2.x*(1.-water)*(pow(a2.g*f2+(1.-f2)*m1.g*.7,4.)*1.6+pow(a3.g,5.)*f3*1.2);c+=uGlow*vein*(.25+.75*(1.-day));
        if(uHasAtm>.5){float t1=D*.001;vec2 a=sph(uCamP,-Vw,uTop);float t0=max(a.x,0.);vec3 T;if(a.y>t0&&t1>t0){vec3 L=scatter(uCamP,-Vw,t0,t1,D<6000.?2:D<60000.?4:6,T);c=c*T+L;}
         float fg=1.-exp(-pow(D*uFog,1.2));c=mix(c,uFogC,fg);}
-       gl_FragColor=vec4(doppler(max(c,0.),-Vw),1.);}` });
+       gl_FragColor=vec4(doppler(max(c,0.),-Vw),1.);gl_FragDepth=logd(vLW);}` });
     if (a) this.makeAir(a);
   }
   makeAir(a) {

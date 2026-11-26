@@ -1,7 +1,7 @@
 // Three sun shadow cascades in camera-relative space; far ones refresh less often.
 import * as THREE from 'three';
 import { V } from './glsl.js';
-const DEF = [[55, 1536, 2], [420, 1280, 9], [5200, 1280, 24]]; // radius m, size, every n frames
+const DEF = [[85, 1536, 2], [420, 1280, 9], [5200, 1280, 24]]; // radius m, size, every n frames
 export const shU = { uSh0: { value: null }, uSh1: { value: null }, uSh2: { value: null }, uShM: { value: [0, 1, 2].map(() => new THREE.Matrix4()) }, uShOn: { value: 0 } };
 export const SHGLSL = /* glsl */`
 uniform sampler2D uSh0,uSh1,uSh2;uniform mat4 uShM[3];uniform float uShOn;
