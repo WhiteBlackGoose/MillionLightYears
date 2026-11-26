@@ -28,13 +28,13 @@ import { sci, kinetic, rapidity, gees, MASS, si, mass, compare, ships } from './
 
 const $ = s => document.querySelector(s), body = document.body;
 const LIGHTS = [
-  { id: 'blackhole', hue: '#b06cff', name: 'Violet light', how: 'Fly close around a black hole', line: 'It fell for a thousand years, and you were there for six seconds of it.' },
+  { id: 'blackhole', hue: '#b06cff', name: 'Violet light', how: 'Fall through the event horizon of a black hole', line: 'It fell for a thousand years, and you were there for six seconds of it.' },
   { id: 'quasar', hue: '#6f8cff', name: 'Blue light', how: 'Ride a jet of the Heart, the galactic core', line: 'Older than every world you have seen.' },
-  { id: 'pulsar', hue: '#4fe6ff', name: 'Cyan light', how: "Let a pulsar's beam sweep over you", line: 'A dead star, still keeping time.' },
-  { id: 'planet', hue: '#86f29b', name: 'Green light', how: 'Walk on a world that has weather', line: 'Someone might have called it home.' },
-  { id: 'star', hue: '#ffd45e', name: 'Golden light', how: "Hold inside a star's corona", line: 'Eight minutes old, and still warm.' },
+  { id: 'pulsar', hue: '#4fe6ff', name: 'Cyan light', how: "Let a pulsar's beam sweep over you 3 times, within 48,000 km", line: 'A dead star, still keeping time.' },
+  { id: 'planet', hue: '#86f29b', name: 'Green light', how: 'Step outside on a world that has weather', line: 'Someone might have called it home.' },
+  { id: 'star', hue: '#ffd45e', name: 'Golden light', how: "Hold inside a star's corona for 4 seconds", line: 'Eight minutes old, and still warm.' },
   { id: 'asteroid', hue: '#ff9440', name: 'Amber light', how: 'Land on an asteroid', line: 'Sealed since before there were planets.' },
-  { id: 'nebula', hue: '#ff4d7e', name: 'Red light', how: 'Fly into a nebula', line: 'Every sun begins as weather.' }];
+  { id: 'nebula', hue: '#ff4d7e', name: 'Red light', how: 'Fly slowly into a nebula', line: 'Every sun begins as weather.' }];
 
 const renderer = new THREE.WebGLRenderer({ canvas: $('#c'), antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.toneMapping = THREE.NoToneMapping; renderer.outputColorSpace = THREE.LinearSRGBColorSpace; renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
