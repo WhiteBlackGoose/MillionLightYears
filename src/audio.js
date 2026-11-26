@@ -6,8 +6,8 @@ export class Audio {
     const x = this.x = new (window.AudioContext || window.webkitAudioContext)(), out = this.out = x.createGain(); out.gain.value = .5; const comp = x.createDynamicsCompressor(); out.connect(comp).connect(x.destination);
     const len = x.sampleRate * 5, ir = x.createBuffer(2, len, x.sampleRate); for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3; }
     const rev = this.rev = x.createConvolver(); rev.buffer = ir; const rg = x.createGain(); rg.gain.value = .55; rev.connect(rg).connect(out);
-    const f = this.f = x.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; f.Q.value = .6; const pg = x.createGain(); pg.gain.value = .075; f.connect(pg); pg.connect(out); pg.connect(rev);
-    const lfo = x.createOscillator(), lg = x.createGain(); lfo.frequency.value = .05; lg.gain.value = 300; lfo.connect(lg).connect(f.frequency); lfo.start();
+    const f = this.f = x.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = .6; const pg = x.createGain(); pg.gain.value = .028; f.connect(pg); pg.connect(out); pg.connect(rev);
+    const lfo = x.createOscillator(), lg = x.createGain(); lfo.frequency.value = .02; lg.gain.value = 90; lfo.connect(lg).connect(f.frequency); lfo.start();
     this.osc = CH.title.map((h, i) => [-1, 1].map(s => { const o = x.createOscillator(); o.type = i ? 'triangle' : 'sawtooth'; o.frequency.value = h; o.detune.value = s * (5 + i * 2); o.connect(f); o.start(); return o; }));
     const nb = x.createBuffer(1, x.sampleRate * 2, x.sampleRate), nd = nb.getChannelData(0); for (let i = 0, l = 0; i < nd.length; i++) nd[i] = (l = l * .96 + (Math.random() * 2 - 1) * .04) * 6; this.noise = nb;
     const n = x.createBufferSource(); n.buffer = nb; n.loop = true; this.ef = x.createBiquadFilter(); this.ef.frequency.value = 180; this.eg = x.createGain(); this.eg.gain.value = 0; n.connect(this.ef).connect(this.eg).connect(out); n.start();
@@ -21,6 +21,6 @@ export class Audio {
   fanfare() { [0, 2, 4, 6].forEach((n, i) => setTimeout(() => this.chime(n), i * 130)); }
   warp() { this.tone(60, 3, .25, 'sawtooth', 900); this.boom(.5, 2500); }
   update(speed, muf) { if (!this.x || !isFinite(speed)) return; const t = this.x.currentTime; this.eg.gain.setTargetAtTime(Math.min(.3, speed / 3800), t, .12); this.ef.frequency.setTargetAtTime(120 + Math.min(1600, speed * .5), t, .2); this.f.Q.setTargetAtTime(muf ? 6 : .6, t, .5);
-    if (t > this.next) { this.next = t + 2.5 + Math.random() * 6; const c = CH[this.k] || CH.title; this.tone(c[Math.random() * c.length | 0] * (Math.random() < .5 ? 4 : 2), 4, .03); } }
+    if (t > this.next) { this.next = t + 9 + Math.random() * 16; const c = CH[this.k] || CH.title; this.tone(c[Math.random() * c.length | 0] * (Math.random() < .5 ? 4 : 2), 5, .011); } }
   mute() { if (!this.x) return; this.m = !this.m; this.out.gain.setTargetAtTime(this.m ? 0 : .5, this.x.currentTime, .1); return this.m; }
 }

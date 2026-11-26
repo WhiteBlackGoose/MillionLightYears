@@ -144,7 +144,8 @@ function spawn(saved) { const setOrigin = () => { if (!st.origin) { const u = un
 }
 const px = () => post.scale * renderer.getPixelRatio() * innerHeight / 900;
 function envMap() { const pm = new THREE.PMREMGenerator(renderer); scene.userData.pm?.dispose(); const t = pm.fromCubemap(sky.rts[sky.cur].texture); scene.userData.pm = t; scene.environment = t.texture; scene.environmentIntensity = 2; pm.dispose(); }
-function setMode(m) { mode = m; body.classList.toggle('flying', m === 'flight'); body.classList.toggle('mapping', m === 'map'); if (m === 'map') gmap.open({ p: uniPos(), anchor, G: cur, way: target && (target.star ? { star: target.star, name: target.name } : { star: anchor, name: target.name }) }); }
+function setMode(m) { mode = m; body.classList.toggle('flying', m === 'flight'); body.classList.toggle('mapping', m === 'map'); if (m === 'map') $('#maplights').innerHTML = '<b>The seven lights</b>' + LIGHTS.map(l => { const g = st.got.includes(l.id); return `<div class="${g ? 'got' : ''}" style="--c:${l.hue}"><i></i><span>${l.name}</span><em>${g ? 'gathered' : l.how}</em></div>`; }).join('') + `<p>${st.got.length === 7 ? 'All seven: fall into the Heart for a new universe' : `${st.got.length} of 7. With all seven, fall into the Heart`}</p>`;
+  if (m === 'map') gmap.open({ p: uniPos(), anchor, G: cur, way: target && (target.star ? { star: target.star, name: target.name } : { star: anchor, name: target.name }) }); }
 const roman = n => { let s = ''; for (const [v, r] of [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]) while (n >= v) { s += r; n -= v; } return s; };
 function goWarp(fn, dur = 2.6) { if (warp) return; warp = { t: 0, dur, fn, done: false, ready: false }; audio.warp(); }
 
