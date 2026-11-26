@@ -10,3 +10,5 @@ Play: https://million-light-years.wbg.gg (deployed from `main` by GitHub Actions
 - `main.js` flight, landing, walking, weather, interface
 
 Positions are metres (64-bit) relative to the nearest star, and the camera is always at the origin.
+
+Board computer voice: lines generated with [Piper](https://github.com/rhasspy/piper) using the `en_US-ljspeech-high` voice (LJ Speech dataset, public domain), then filtered with ffmpeg. Files in `public/voice/`.
