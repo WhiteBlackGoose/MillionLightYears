@@ -57,7 +57,7 @@ export class GMap {
     this.hot = h; const he = this.misc.hov; if (h?.e) h.e.classList.add('hot'); if (h?.star && !h.e) { this.put(he, this.rel(this.upos(h.star))); he.children[1].textContent = `${starName(h.star)}, ${starClass(h.star)}`; } else he.style.display = 'none';
     const wy = this.way; if (wy) { this.put(this.misc.sel, this.rel(this.upos(wy.star))); const t = 'Waypoint: ' + wy.name; if (this.misc.sel.children[1].textContent !== t) this.misc.sel.children[1].textContent = t; } else this.misc.sel.style.display = 'none';
     $('#map').style.cursor = h ? 'pointer' : this.drag ? 'grabbing' : 'grab';
-    const t = D > 2.2 * G.R ? 'Universe' : G.name, sub = D > 2.2 * G.R ? `View ${dist(D * LY)} across` : `${G.label}, ${dist(G.R * 2 * LY)} wide. View ${dist(D * LY)} across`; if ($('#maphead h2').textContent !== t) $('#maphead h2').textContent = t; if ($('#maphead p').textContent !== sub) $('#maphead p').textContent = sub;
+    const t = D > 2.2 * G.R ? 'Universe' : G.name, sub = D > 2.2 * G.R ? `View ${dist(D * LY)} across${this.uni.a > 1.0001 ? `. Space has expanded ${this.uni.a < 1e4 ? this.uni.a.toPrecision(4) : this.uni.a.toExponential(2)} times since your start` : ''}` : `${G.label}, ${dist(G.R * 2 * LY)} wide. View ${dist(D * LY)} across`; if ($('#maphead h2').textContent !== t) $('#maphead h2').textContent = t; if ($('#maphead p').textContent !== sub) $('#maphead p').textContent = sub;
   }
   dTo(p) { return dist(p.distanceTo(this.you.p) * LY); }
   select(h) {
