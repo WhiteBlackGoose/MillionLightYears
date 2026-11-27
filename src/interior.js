@@ -9,6 +9,10 @@ const TONE = [[1, .95, .86], [1, .93, .84], [.6, .9, 1.1], [.95, .7, 1.15], [.8,
 // hull half-height by ship z, must match the hull in craft.js
 export const hullN = z => { const t = (z + 6.6) / 9.6, n = Math.pow(Math.sin(Math.min(1, t * 1.22 + .02) * Math.PI / 2), .8), tail = t > .78 ? 1 - Math.pow((t - .78) / .22, 2) * .35 : 1; return n * tail; };
 const radius = i => Math.min(...[0, 1].map(k => hullN(-(Y0 + (i + k) * H) / SCALE) * .7 * SCALE)) - .35;
+// remove the triangles of a mesh that would hang into the lift shaft
+function shaftCut(g, m = .35) { if (g.index) g = g.toNonIndexed(); const p = g.attributes.position.array, n = g.attributes.normal.array, P = [], Nn = [], lim = TUBE.r + m;
+  for (let i = 0; i < p.length; i += 9) { let hit = false; for (let k = 0; k < 9; k += 3) if (Math.hypot(p[i + k] - TUBE.x, p[i + k + 2] - TUBE.z) < lim) hit = true; if (!hit) for (let k = 0; k < 9; k++) { P.push(p[i + k]); Nn.push(n[i + k]); } }
+  const o = new THREE.BufferGeometry(); o.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); o.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); return o; }
 export const RAD = DECKS.map((_, i) => Math.max(4, radius(i)));
 export const floorY = i => Y0 + i * H;
 export const deckOf = y => Math.max(0, Math.min(N - 1, Math.floor((y - Y0 + .05) / H)));
@@ -22,14 +26,14 @@ export class Interior {
     DECKS.forEach((name, i) => {
       const y = floorY(i), R = RAD[i];
       const box = (a, d, yy, w, h, l, col, e = 0, tilt = 0) => put(tr(new THREE.BoxGeometry(w, h, l), Math.sin(a) * d, y + yy, Math.cos(a) * d, a, tilt), col, e), cyl = (a, d, yy, r0, r1, h, col, e = 0, n = 20) => put(tr(new THREE.CylinderGeometry(r0, r1, h, n), Math.sin(a) * d, y + yy, Math.cos(a) * d, a), col, e), ob = (a, d, rr) => this.obs[i].push([Math.sin(a) * d, Math.cos(a) * d, rr]);
-      const ring = (rr, yy, t, col, e = 0) => put(tr(new THREE.TorusGeometry(rr, t, 6, 64), 0, y + yy, 0, 0, Math.PI / 2), col, e);
+      const ring = (rr, yy, t, col, e = 0) => put(shaftCut(tr(new THREE.TorusGeometry(rr, t, 6, 64), 0, y + yy, 0, 0, Math.PI / 2)), col, e);
       const free = a => Math.abs(Math.atan2(Math.sin(a - TUBEA), Math.cos(a - TUBEA))) > .6; // keep clear of the lift
       // floor with a hole for the lift, grating ring, lights, pipes
       const sh = new THREE.Shape(); sh.absarc(0, 0, R, 0, Math.PI * 2); if (i) { const ho = new THREE.Path(); ho.absarc(TUBE.x, -TUBE.z, TUBE.r, 0, Math.PI * 2, true); sh.holes.push(ho); } put(tr(new THREE.ExtrudeGeometry(sh, { depth: .28, bevelEnabled: false, curveSegments: 40 }), 0, y - .28, 0, 0, -Math.PI / 2), FLOOR);
       if (i) put(tr(new THREE.TorusGeometry(TUBE.r, .07, 8, 40), TUBE.x, y + .02, TUBE.z, 0, Math.PI / 2), BLUE, 1.6);
       ring(R - .12, .06, .035, GLOW, .9); ring(R - .1, H - .42, .06, '#fff1dc', 1.5); ring(R * .45, H - .34, .05, '#eaf2ff', 1.7); ring(R - .3, 1.05, .035, '#9aa0aa'); // hand rail for zero g
       for (let k = 0; k < 3; k++) ring(R - .35 - k * .22, H - .55 - k * .03, .06 + k * .02, k ? DARK : COP);
-      for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 + .13; box(a, R * .62, H - .3, .5, .05, .5, '#f6efe0', 1.2); }
+      for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 + .13; if (Math.hypot(Math.sin(a) * R * .62 - TUBE.x, Math.cos(a) * R * .62 - TUBE.z) > TUBE.r + .6) box(a, R * .62, H - .3, .5, .05, .5, '#f6efe0', 1.2); }
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + .3; put(tr(new THREE.CylinderGeometry(.03, .03, .9, 6), TUBE.x + Math.sin(a) * (TUBE.r + .05), y + .5, TUBE.z + Math.cos(a) * (TUBE.r + .05)), '#9aa0aa'); }
       // wall, windows, ribs
       const bigW = BIG.includes(i);

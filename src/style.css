@@ -145,3 +145,7 @@ body.inhole #hud:before{content:'';position:absolute;inset:0;box-shadow:inset 0 
 #selbar{position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 12px;background:#07060cc8;border:1px solid #fff2;opacity:0;visibility:hidden;pointer-events:auto;cursor:default;white-space:nowrap}#selbar.on{opacity:1;visibility:visible}
 #selbar b{font:400 20px var(--disp);color:var(--amber)}#selbar span{color:var(--dim);margin-right:6px;font-size:12px}#selbar button{padding:6px 12px;margin:0;font-size:12px;background:transparent;color:var(--ink);border:1px solid #fff4}#selbar button kbd{margin:0 4px 0 0}#selbar button.act{background:var(--amber);color:#120b04;border-color:var(--amber)}#selbar button.act kbd{color:#120b04;border-color:#120b0466}
 #hole.on~#selbar{display:none}
+#lift{position:absolute;right:28px;top:50%;transform:translateY(-50%);background:#0b0d12d9;border:1px solid #ffffff22;border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.55;opacity:0;pointer-events:none;transition:opacity .25s;min-width:190px}
+#lift.on{opacity:1}#lift b{display:block;font-weight:500;letter-spacing:.12em;text-transform:uppercase;font-size:11px;color:#ffffff88;margin-bottom:4px}
+#lift div{color:#ffffff80;padding:0 6px;border-radius:3px}#lift div i{display:inline-block;width:22px;font-style:normal;color:#ffffff44}
+#lift div.cur{color:#fff}#lift div.sel{background:#ffb34a2a;color:var(--amber)}#lift div.sel i{color:var(--amber)}
