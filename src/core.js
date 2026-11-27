@@ -14,7 +14,13 @@ vec3 unab(vec3 n){if(uBeta<1e-4)return n;float c=dot(n,uBDir),g=1./sqrt(1.-uBeta
 // A black body of temperature T seen at frequency factor D is exactly a black body of temperature T*D.
 vec3 planck(float T){return 1./(exp(min(vec3(23587.,26160.,30942.)/max(T,1.),60.))-1.);} // relative radiance at 610, 550, 465 nm
 vec3 bbShift(float T,float D){vec3 x=vec3(23587.,26160.,30942.)/T;return (exp(min(x,60.))-1.)/(exp(min(x/max(D,.02),60.))-1.);}
-vec3 shiftCol(vec3 col,float D){if(abs(D-1.)<1e-4)return col;vec3 k=pow(max(bbShift(5600.,D),1e-12),vec3(.42));return max(col,0.)*max(min(k,40.),vec3(.02,.006,.003));}
+// Doppler shift of colour: the light of each pixel is spread over eight bands from far infrared to ultraviolet (the infrared/ultraviolet
+// ones guessed from its red/blue), every band lands at wavelength/D and is seen through the eye's red, green and blue response.
+// Ahead (D>1) colours slide towards blue and violet and infrared rises into view; behind, towards red and then into darkness.
+float gsn(float x,float m,float s){float t=(x-m)/s;return exp(-.5*t*t);}
+vec3 eyeRGB(float l){return vec3(gsn(l,600.,42.)+.33*gsn(l,428.,22.),gsn(l,548.,44.),gsn(l,455.,30.));}
+vec3 bands(vec3 c,float D){float i=1./D;return c.r*(.35*eyeRGB(1500.*i)+.5*eyeRGB(1000.*i)+.6*eyeRGB(780.*i)+eyeRGB(610.*i))+c.g*eyeRGB(550.*i)+c.b*(eyeRGB(465.*i)+.5*eyeRGB(400.*i)+.35*eyeRGB(330.*i));}
+vec3 shiftCol(vec3 col,float D){if(abs(D-1.)<1e-3)return col;col=max(col,0.);vec3 nw=max(bands(vec3(1.),1.),vec3(.05));return max(col+(bands(col,D)-bands(col,1.))/nw,0.)*clamp(pow(D,1.5),.05,4.);}
 float dopF(vec3 n){return uBeta<1e-4?1.:(1.+uBeta*dot(n,uBDir))/sqrt(1.-uBeta*uBeta);}
 vec3 doppler(vec3 col,vec3 n){return uBeta<1e-4?col:shiftCol(col,dopF(n));}
 float logd(float w){return log2(max(1.+w,1e-6))*LDK;}

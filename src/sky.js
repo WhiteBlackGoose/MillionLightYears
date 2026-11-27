@@ -69,9 +69,11 @@ export class Sky {
   finish() { const old = this.rts[this.cur], nw = this.rts[1 - this.cur]; skyU.uSkyA.value = old.texture; skyU.uSkyB.value = nw.texture; skyU.uSkyMix.value = 0; this.fade = 0; this.cur = 1 - this.cur; this.done = true; }
   bakeNow(stars, g) { this.setup(stars, g); for (let i = 0; i < 24; i++) this.tile(i); this.finish(); this.fade = 1; skyU.uSkyMix.value = 1; this.step = -1; }
   update(stars, g, dt) {
-    if (this.fade < 1) { this.fade = Math.min(1, this.fade + dt * 3); skyU.uSkyMix.value = this.fade; if (this.step < 0) return; }
-    if (this.step < 0) { if (this.fade < 1) return; const near = Math.max(1, Math.min(...(this.nebs || []).map(n => Math.max(n.R * .5, n.d - n.R)), 260, Infinity)); const out = g.length() - stars.G.R; const nearD = out > 0 ? Math.max(near, out * .6) : near; if (!this.last || this.last.distanceTo(g) > nearD * .02) { this.setup(stars, g); this.step = 0; } else return; }
-    this.tile(this.step++); if (this.step >= 24) { this.step = -1; this.finish(); }
+    // fast flight: rebake more tiles per frame and aim the bake at where we will be when it is done, so nebulae stream past instead of stepping
+    const vel = this.pg ? g.clone().sub(this.pg).divideScalar(Math.max(dt, 1e-3)) : new THREE.Vector3(); this.pg = g.clone(); const sp = vel.length();
+    if (this.fade < 1) { this.fade = Math.min(1, this.fade + dt * (this.fr || 3)); skyU.uSkyMix.value = this.fade; if (this.step < 0) return; }
+    if (this.step < 0) { if (this.fade < 1) return; const near = Math.max(1, Math.min(...(this.nebs || []).map(n => Math.max(n.R * .5, n.d - n.R)), 260, Infinity)); const out = g.length() - stars.G.R; const nearD = out > 0 ? Math.max(near, out * .6) : near; if (!this.last || this.last.distanceTo(g) > nearD * .02) { const Tb = nearD * .02 / Math.max(sp, 1e-12); this.per = Math.max(1, Math.min(8, Math.ceil(24 / (Tb * 60)))); this.fr = Math.max(3, Math.min(30, 1.5 / Tb)); this.setup(stars, sp > 0 ? g.clone().addScaledVector(vel, (24 / this.per + 2) / 60) : g); this.step = 0; } else return; }
+    for (let k = 0; k < (this.per || 1) && this.step < 24; k++) this.tile(this.step++); if (this.step >= 24) { this.step = -1; this.finish(); }
   }
 }
 export function skyMesh(rel = true) {

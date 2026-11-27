@@ -212,7 +212,7 @@ function pickHover() {
   const s = P.w < LY * 5 ? stars.pick(gal, n, .9997) : null; if (s && s.id !== anchor.id) return { s }; const up = uniPos(); let bg = null, ba = .012; for (const [G, d] of uni.near(up, 25)) { if (d < G.R * 1.6) continue; const r = V(G.pos[0] - up.x, G.pos[1] - up.y, G.pos[2] - up.z).divideScalar(d), sep = Math.acos(Math.min(1, r.dot(n))) - Math.min(.3, G.R * .5 / d); if (sep < ba) { ba = sep; bg = G; } } if (bg) uni.pin(bg); return bg ? { s: bg.star } : null;
 }
 const mapTarget = t => { if (t.star?.G) uni.pin(t.star.G); target = t.here ? (t.body && bodies.find(b => b.name === t.body)) || sys.main : t; picked = true; };
-const gmap = new GMap(mapCam, t => { mapTarget(t); setMode('flight'); if (P.state === 'fly' && !hole) { hold = null; startGlide(); startTrip(target.name); toast('Gliding to ' + target.name); } else toast('Waypoint: ' + target.name); },
+const gmap = new GMap(mapCam, t => { mapTarget(t); setMode('flight'); if (autoGo()) startTrip(target.name); else toast('Waypoint: ' + target.name); },
   t => { const was = target; mapTarget(t); if (glide && target !== was) { glide = false; toast('Autopilot off, new waypoint: ' + target.name); } else toast('Waypoint: ' + target.name); if (!glide) pointAt(target); });
 
 // ---------- input
@@ -238,7 +238,7 @@ addEventListener('keydown', e => {
     case 'Enter': $('#report').classList.remove('on'); break;
     case 'KeyM': freeExit = true; document.exitPointerLock?.(); setTimeout(() => freeExit = false, 300); setMode('map'); break;
     case 'KeyT': pickTarget(); break;
-    case 'KeyF': if (P.state === 'fly' && !hole) { if (glide) { glide = false; toast('Glide ended'); } else { startGlide(); toast(`Gliding to ${target.name}` + (hold ? `, ${hold.t}` : '')); } } break;
+    case 'KeyF': if (glide) { glide = false; AP = null; toast('Autopilot off'); } else autoGo(); break;
     case 'KeyC': if (P.state === 'fly' && !hole && !target.star) { gaze = !gaze; glide = false; gz = null; if (gaze) P.w = 0; } break;
     case 'KeyG': if (P.state === 'descend') stopLanding('Landing cancelled'); else if (canLand()) startLanding(); else if (P.state === 'landed') takeOff(); break;
     case 'KeyE': if (inside) useSpot(); else if (P.state === 'walk') board(); else if (P.state === 'fly' || P.state === 'landed' || P.state === 'descend') goInside(); break;
@@ -277,6 +277,12 @@ function landStep(dt) { const L = land, b = L.b, R0 = P.pos.distanceTo(b.pos), u
 function touchDown() { legStart(); say(`Touchdown. Welcome to ${nb.name}`); P.state = 'landed'; P.thr = 0; P.roll = 0; ACC.set(0, 0, 0); audio.boom(.5, 260); shake = .5; st.landed++; const u = upAt(nb, P.pos); if (nb.type === 'asteroid') gain('asteroid'); banner(nb.name, `${nb.label}. E to walk through the ship, G to take off.`); persist(); }
 let leaving = null; const leaveGoal = b => 1.4 * b.R; // 0.7 diameters above the ground
 function leavePlanet() { if (!nb || dead || hole) return; if (P.state === 'walk') { if (footDist() > 46) { toast('Board the ship first'); return; } board(); } if (P.state === 'descend') return; if (P.state === 'landed') takeOff(); glide = gaze = false; hold = null; head = null; coast = false; lockCourse(); leaving = { b: nb, t: 0 }; props.clr = null; toast(`Leaving ${nb.name}`); say(`Leaving ${nb.name}`); audio.tone(40, 3.5, .18, 'sawtooth', 160); }
+// autopilot from whatever we are doing: board, abort a landing, lift off, then fly
+function autoGo() { if (!target || hole || dead || gaze) return false;
+  if (P.state === 'walk') { if (footDist() > 46) { toast('Walk back to the ship first: ' + dist(footDist())); return false; } board(); }
+  if (P.state === 'descend') stopLanding('Landing cancelled');
+  if (P.state === 'landed') { say('Lift off'); takeT = 3.2; P.state = 'fly'; audio.boom(.3, 800); }
+  if (P.state !== 'fly') return false; leaving = null; head = null; steerT = -1; hold = null; startGlide(); toast('Autopilot: ' + target.name); return true; }
 function takeOff() { say('Lift off'); takeT = 3.2; P.state = 'fly'; const u = upAt(nb, P.pos); P.drift.copy(u).multiplyScalar(9); P.thr = .25; lockCourse(); leaving = { b: nb, t: 0, short: true }; audio.boom(.3, 800); toast('Lift off'); }
 function goInside(at) { if (gaze || dead || hole || warp) return; const q = new THREE.Quaternion(); inside = { p: CAPS.clone(), v: V(), q, pitch: 0, buck: true, mx: 0, my: 0, deck: NDECK - 1 }; if (at === 'hatch') { inside.buck = false; inside.p.set(0, floorY(0) + 1, -(RAD[0] - 2.4)); } if (P.state === 'walk') P.state = 'landed'; ship.setInside(true); look.on = false; look.yaw = look.pitch = 0; steerT = -1; lockPtr(); toast(inside.buck ? 'In the pilot capsule. Look around, U unbuckles, E back to the outside view' : `${DECKS[0]}. U buckles you in at the capsule in the cockpit`); }
 function leaveInside() { inside = null; ship.setInside(false); freeExit = true; document.exitPointerLock?.(); setTimeout(() => freeExit = false, 300); camBase.copy(P.q); }
@@ -348,13 +354,13 @@ function apDetour(A) { const L = A.distanceTo(P.pos), u = A.clone().sub(P.pos).d
   for (const b of bodies) { if (b === target) continue; const m = b.kind === 'blackhole' || b.kind === 'quasar' ? b.R * 30 : b.kind === 'star' || b.kind === 'pulsar' ? b.R * 2 : (b.R + (b.atm ? b.atm.top : 0)) * 1.15; const o = b.pos.clone().sub(P.pos), t = o.dot(u); if (t <= 0 || t >= L) continue; const off = u.clone().multiplyScalar(t).sub(o), q = off.length(); if (q > m) continue; if (!best || t < best.t) best = { t, b, m, off: q > 1 ? off.divideScalar(q) : V(0, 1, 0).cross(u).normalize() }; }
   return best ? best.b.pos.clone().addScaledVector(best.off, best.m * 1.8) : null; }
 function autoStep(dt, A, arr) {
-  if (!AP || AP.target !== target) { if (!target.star && target !== P.ref) { P.ref = target; matchV.set(0, 0, 0); matching = null; } P.drift.set(0, 0, 0); const wp = apDetour(A); AP = { target, wp, done: false, leg: apLeg(wp || A, wp ? 0 : arr) }; }
+  if (!AP || AP.target !== target) { if (!target.star && target !== P.ref) { P.ref = target; matchV.set(0, 0, 0); matching = null; } P.drift.set(0, 0, 0); let wp = null; if (nb && nb !== target) { const top = nb.R + (nb.atm ? nb.atm.top * 1.3 : 0) + 2e4, r = P.pos.clone().sub(nb.pos); if (r.length() < top) wp = nb.pos.clone().addScaledVector(r.normalize(), top); } AP = { target, wp, climb: !!wp, done: false, leg: null }; if (!wp) AP.wp = apDetour(A); AP.leg = apLeg(AP.wp || A, AP.wp ? 0 : arr); }
   const goal = AP.wp || A, ga = AP.wp ? 0 : arr, L = AP.leg; L.t += dt; const s = Math.min(1, L.t / L.T), x = Math.expm1(Math.log1p(L.x0) * (1 - ease(s))), cur0 = Math.max(0, goal.distanceTo(P.pos) - ga), xn = Math.min(cur0, x);
   const out = P.pos.clone().sub(goal); if (out.lengthSq() < 1e-6) out.copy(F).negate(); out.normalize(); const np = goal.clone().addScaledVector(out, ga + xn), mv = np.sub(P.pos), ml = mv.length();
   // the generic integrator moves the ship by D * P.w * dt; feed it exactly this step
   W = 1; matchV.set(0, 0, 0); P.drift.set(0, 0, 0); if (ml > 1e-9) { D.copy(mv).divideScalar(ml); P.w = ml / Math.max(dt, 1e-4); } else P.w = 0;
-  m4.lookAt(P.pos, A, V(0, 1, 0).applyQuaternion(P.q)); dq.setFromRotationMatrix(m4); P.q.slerp(dq, 1 - Math.exp(-dt * 4)); F.set(0, 0, -1).applyQuaternion(P.q);
-  if (s >= 1) { if (AP.wp) { AP.wp = null; AP.leg = apLeg(A, arr); } else { P.pos.add(mv); P.w = 0; D.copy(F); AP.done = true; } }
+  m4.lookAt(P.pos, AP.wp || A, V(0, 1, 0).applyQuaternion(P.q)); dq.setFromRotationMatrix(m4); P.q.slerp(dq, 1 - Math.exp(-dt * 4)); F.set(0, 0, -1).applyQuaternion(P.q);
+  if (s >= 1) { if (AP.wp) { AP.wp = AP.climb ? apDetour(A) : null; AP.climb = false; AP.leg = apLeg(AP.wp || A, AP.wp ? 0 : arr); } else { P.pos.add(mv); P.w = 0; D.copy(F); AP.done = true; } }
   dbgG = { x: cur0, want: P.w, w: P.w, W, Wlim, align: 1, mv: 0, s }; }
 // ---------- autopilot to a body: match its velocity, then a straight line with a planned speed profile, flown at full power in ship time
 let apB = false, apW = 0;
@@ -469,7 +475,7 @@ function simulate(dt) {
   P.drift.multiplyScalar(Math.exp(-dt * (GH.over ? .05 : .9))); const move = D.clone().multiplyScalar(P.w * dt * W).addScaledVector(P.drift, dt * W).addScaledVector(matchV, dt * W); if (P.state === 'fly' && !gaze) { // never pass through a body within one frame
     const L = move.length(); if (L > 1) { const u = move.clone().divideScalar(L); for (const b of bodies) { const o = b.pos.clone().sub(P.pos), t = o.dot(u); if (t < 0 || t > L + b.R) continue; const q = o.clone().addScaledVector(u, -t).length(); if (q < b.R && o.length() > b.R) { const k = t - Math.sqrt(b.R * b.R - q * q); if (k < L) move.setLength(Math.max(0, k + (b.kind === 'blackhole' || b.kind === 'quasar' ? b.R * .002 : -b.R * .001))); } } } P.pos.add(move); } else move.set(0, 0, 0);
   // surfaces
-  const heat = inAir ? Math.min(1, dens * Math.pow(P.w / 1500, 2) * 1.1) : 0; plasma.material.uniforms.uI.value += (heat - plasma.material.uniforms.uI.value) * dt * 3; plasma.visible = plasma.material.uniforms.uI.value > .01; if (heat > .3) shake = Math.max(shake, heat * .35);
+  const heat = inAir && !apB ? Math.min(1, dens * Math.pow(P.w / 1500, 2) * 1.1) : 0; plasma.material.uniforms.uI.value += (heat - plasma.material.uniforms.uI.value) * dt * 3; plasma.visible = plasma.material.uniforms.uI.value > .01; if (heat > .3) shake = Math.max(shake, heat * .35);
   let star01 = 0, bend = 0; nearHole = null;
   for (const b of bodies) { const r = b.pos.clone().sub(P.pos), d = r.length();
     if (b.kind === 'star') { star01 = Math.max(star01, 1 - (d / b.R - 1.1) / .8); if (d < b.R * 1.01) die('Nothing that touches a star stays itself.'); else if (d < b.R * 1.9 && !dead) { coronaT += dt; if (coronaT > 4) gain('star'); } }
