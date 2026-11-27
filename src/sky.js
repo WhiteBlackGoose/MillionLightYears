@@ -6,8 +6,9 @@ import { mat, REL } from './core.js';
 import { nebulae } from './stars.js';
 const SIZE = 1024, TILES = 2;
 const mkRT = () => new THREE.WebGLCubeRenderTarget(SIZE, { type: THREE.HalfFloatType, generateMipmaps: false, depthBuffer: false });
-export const skyU = { uSkyA: { value: null }, uSkyB: { value: null }, uSkyMix: { value: 0 } };
-export const SKYFN = 'uniform samplerCube uSkyA,uSkyB;uniform float uSkyMix;vec3 skyAt(vec3 d){return mix(textureCube(uSkyA,d).rgb,textureCube(uSkyB,d).rgb,uSkyMix);}\n';
+export const skyU = { uSkyA: { value: null }, uSkyB: { value: null }, uSkyMix: { value: 0 }, uSkyOA: { value: new THREE.Vector3() }, uSkyOB: { value: new THREE.Vector3() } };
+// the baked sky is shifted per pixel by how far we moved since it was baked (parallax from the stored nebula depth), so nebulae slide past smoothly
+export const SKYFN = 'uniform samplerCube uSkyA,uSkyB;uniform float uSkyMix;uniform vec3 uSkyOA,uSkyOB;vec3 skyRe(samplerCube s,vec3 d,vec3 o){float id=textureCube(s,d).a;vec3 k=o*id;float l=length(k);if(l>.8)k*=.8/l;return textureCube(s,normalize(d+k)).rgb;}vec3 skyAt(vec3 d){return mix(skyRe(uSkyA,d,uSkyOA),skyRe(uSkyB,d,uSkyOB),uSkyMix);}\n';
 const NN = 5;
 export class Sky {
   constructor(renderer) {
@@ -15,7 +16,7 @@ export class Sky {
     this.u = { uN: { value: noiseTexture() }, uFace: { value: 0 }, uO: { value: V() }, uNP: { value: Array.from({ length: NN }, () => new THREE.Vector4()) }, uNA: { value: Array.from({ length: NN }, () => V()) }, uNB: { value: Array.from({ length: NN }, () => V()) }, uND: { value: Array.from({ length: NN }, () => V()) }, uNS: { value: new Float32Array(NN) }, uGM: { value: new THREE.Matrix3() }, uGT: { value: V(2, 2.7, 0) }, uVol: { value: 1 } };
     const tri = new THREE.BufferGeometry(); tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
     this.m = new THREE.Mesh(tri, new THREE.ShaderMaterial({ depthTest: false, depthWrite: false, uniforms: this.u, vertexShader: 'varying vec2 vS;void main(){vS=position.xy;gl_Position=vec4(position.xy,0.,1.);}',
-      fragmentShader: NOISE + /* glsl */`precision highp sampler3D;varying vec2 vS;uniform sampler3D uN;uniform int uFace;uniform vec3 uO;uniform vec4 uNP[${NN}];uniform vec3 uNA[${NN}],uNB[${NN}],uND[${NN}];uniform float uNS[${NN}];uniform mat3 uGM;uniform vec3 uGT;uniform float uVol;
+      fragmentShader: NOISE + /* glsl */`precision highp sampler3D;varying vec2 vS;uniform sampler3D uN;uniform int uFace;uniform vec3 uO;uniform vec4 uNP[${NN}];uniform vec3 uNA[${NN}],uNB[${NN}],uND[${NN}];uniform float uNS[${NN}];uniform mat3 uGM;uniform vec3 uGT;uniform float uVol;float gIW,gW;
       float arms(vec3 p,float r,float w){return .5+.5*cos(uGT.x*(atan(p.z,p.x)-log(r+.03)*uGT.y)+w);}
       void neb(int k,vec3 rd,inout vec3 col,inout float tr){vec3 ro=-uNP[k].xyz;float b=dot(ro,rd);vec3 pr=ro-b*rd;float q=1.-dot(pr,pr);if(q<0.||uNP[k].w<=0.)return;q=sqrt(q);float t0=max(-b-q,0.),t1=-b+q;if(t1<=0.)return;
        const int S=52;float dt=(t1-t0)/float(S);float t=t0+dt*hash13(vec3(gl_FragCoord.xy,float(k)));vec3 sd=vec3(uNS[k],uNS[k]*1.7,uNS[k]*.6);
@@ -29,12 +30,12 @@ export class Sky {
           vec3 em=mix(uNA[k],uNB[k],smoothstep(.36,.56,n.r+f.g*.16-.07));em=mix(em,uND[k],smoothstep(.5,1.7,lit)*.65);
           float al=1.-exp(-den*dt*17.);vec3 c=em*fil*(.16+lit*1.5);
           c=mix(c,c*.05+vec3(.003,.002,.002),smoothstep(.5,.72,d.r+f.r*.3-.12)*(1.-smoothstep(1.,2.6,lit)));
-          float nearF=smoothstep(0.,.05,t);col+=tr*al*c*nearF*1.15;tr*=1.-al*.82*nearF;if(tr<.02)break;}}
+          float nearF=smoothstep(0.,.05,t);col+=tr*al*c*nearF*1.15;{float wq=tr*al*dot(c,vec3(.33))*nearF;gW+=wq;gIW+=wq/max(t*uNP[k].w,1e-3);}tr*=1.-al*.82*nearF;if(tr<.02)break;}}
         t+=dt;}
        // embedded suns
        for(int j=0;j<3;j++){vec3 s=(j==0?s0:j==1?s1:s2)-ro;float m=length(s);float an=acos(clamp(dot(s/m,rd),-1.,1.));float z=an*m;col+=uND[k]*max(tr,.25)*(.0016/(z*z+.0012))*.10;}}
       void main(){float s=vS.x,v=vS.y;vec3 d=uFace==0?vec3(1,-v,-s):uFace==1?vec3(-1,-v,s):uFace==2?vec3(s,1,v):uFace==3?vec3(s,-1,-v):uFace==4?vec3(s,-v,1):vec3(-s,-v,-1);vec3 rd=normalize(d);
-       vec3 col=vec3(.0006,.0007,.0013);float tr=1.;
+       vec3 col=vec3(.0006,.0007,.0013);float tr=1.;gIW=0.;gW=0.;
        // faint veils so the deep sky is never empty
        {vec3 w=texture(uN,rd*.35+.3).rgb-.5;float a=texture(uN,rd*.55+w*.5).r,f=texture(uN,rd*1.1+w).g;col+=mix(vec3(.10,.16,.5),vec3(.5,.1,.34),smoothstep(.4,.65,texture(uN,rd*.25+7.).r))*pow(max(a-.34,0.)*2.2,2.)*f*f*.10*(.12+.88*uVol);}
        // galaxy, near to far on exponential steps
@@ -60,19 +61,20 @@ export class Sky {
        g*=.35+1.1*smoothstep(.0,.5,dot(g,vec3(.33)));g*=.5;g/=1.+dot(g,vec3(.33))*2.6;col=col*mix(1.,T,uVol)+g*uVol;tr=1.;
        vec3 nc=vec3(0);for(int k=0;k<${NN};k++)neb(k,rd,nc,tr);
        col=nc+col*tr;
-       gl_FragColor=vec4(max(col,0.),1.);}` })); this.m.frustumCulled = false; this.sc = new THREE.Scene(); this.sc.add(this.m); this.cam = new THREE.Camera(); this.last = null;
+       float fr=clamp(dot(nc,vec3(.33))/max(dot(col,vec3(.33)),1e-6),0.,1.);gl_FragColor=vec4(max(col,0.),gW>0.?gIW/gW*fr:0.);}` })); this.m.frustumCulled = false; this.sc = new THREE.Scene(); this.sc.add(this.m); this.cam = new THREE.Camera(); this.last = null;
   }
   setGalaxy() { this.last = null; }
   setup(stars, g) { this.last = g.clone(); const G = stars.G, up = V(g.x + G.pos[0], g.y + G.pos[1], g.z + G.pos[2]); this.u.uGM.value.copy(G.m3); this.u.uGT.value.set(G.arms, G.wind, G.ell); this.u.uO.value.copy(g).divideScalar(G.R).applyMatrix3(G.m3);
-    const ol = this.u.uO.value.length(); this.u.uVol.value = G.ell ? Math.max(0, Math.min(1, (1.5 - ol) / .4)) : 1 - Math.max(0, Math.min(1, (ol - 1.1) / .4)); this.nebs = nebulae(stars, g); for (let i = 0; i < NN; i++) { const n = this.nebs[i]; if (!n) { this.u.uNP.value[i].set(9, 9, 9, 0); continue; } this.u.uNP.value[i].set((n.x - g.x) / n.R, (n.y - g.y) / n.R, (n.z - g.z) / n.R, 1); this.u.uNA.value[i].copy(C(n.col[0])); this.u.uNB.value[i].copy(C(n.col[1])); this.u.uND.value[i].copy(C(n.col[2])); this.u.uNS.value[i] = n.seed; } }
+    const ol = this.u.uO.value.length(); this.u.uVol.value = G.ell ? Math.max(0, Math.min(1, (1.5 - ol) / .4)) : 1 - Math.max(0, Math.min(1, (ol - 1.1) / .4)); this.nebs = nebulae(stars, g); for (let i = 0; i < NN; i++) { const n = this.nebs[i]; if (!n) { this.u.uNP.value[i].set(9, 9, 9, 0); continue; } this.u.uNP.value[i].set((n.x - g.x) / n.R, (n.y - g.y) / n.R, (n.z - g.z) / n.R, n.R); this.u.uNA.value[i].copy(C(n.col[0])); this.u.uNB.value[i].copy(C(n.col[1])); this.u.uND.value[i].copy(C(n.col[2])); this.u.uNS.value[i] = n.seed; } }
   tile(i) { const rt = this.rts[1 - this.cur], f = i / 4 | 0, q = i % 4, w = SIZE / TILES; this.u.uFace.value = f; rt.viewport.set(0, 0, SIZE, SIZE); rt.scissor.set((q % 2) * w, (q >> 1) * w, w, w); rt.scissorTest = true; const r = this.r; r.autoClear = false; r.setRenderTarget(rt, f); r.render(this.sc, this.cam); r.setRenderTarget(null); r.autoClear = true; }
-  finish() { const old = this.rts[this.cur], nw = this.rts[1 - this.cur]; skyU.uSkyA.value = old.texture; skyU.uSkyB.value = nw.texture; skyU.uSkyMix.value = 0; this.fade = 0; this.cur = 1 - this.cur; this.done = true; }
+  finish() { const old = this.rts[this.cur], nw = this.rts[1 - this.cur]; this.bp = this.bp || [null, null]; this.bp[1 - this.cur] = this.last.clone(); this.bA = this.bp[this.cur]; this.bB = this.bp[1 - this.cur]; skyU.uSkyA.value = old.texture; skyU.uSkyB.value = nw.texture; skyU.uSkyMix.value = 0; this.fade = 0; this.cur = 1 - this.cur; this.done = true; }
   bakeNow(stars, g) { this.setup(stars, g); for (let i = 0; i < 24; i++) this.tile(i); this.finish(); this.fade = 1; skyU.uSkyMix.value = 1; this.step = -1; }
   update(stars, g, dt) {
     // fast flight: rebake more tiles per frame and aim the bake at where we will be when it is done, so nebulae stream past instead of stepping
+    if (this.bB) { skyU.uSkyOB.value.copy(g).sub(this.bB); if (this.bA) skyU.uSkyOA.value.copy(g).sub(this.bA); else skyU.uSkyOA.value.copy(skyU.uSkyOB.value); }
     const vel = this.pg ? g.clone().sub(this.pg).divideScalar(Math.max(dt, 1e-3)) : new THREE.Vector3(); this.pg = g.clone(); const sp = vel.length();
     if (this.fade < 1) { this.fade = Math.min(1, this.fade + dt * (this.fr || 3)); skyU.uSkyMix.value = this.fade; if (this.step < 0) return; }
-    if (this.step < 0) { if (this.fade < 1) return; const near = Math.max(1, Math.min(...(this.nebs || []).map(n => Math.max(n.R * .5, n.d - n.R)), 260, Infinity)); const out = g.length() - stars.G.R; const nearD = out > 0 ? Math.max(near, out * .6) : near; if (!this.last || this.last.distanceTo(g) > nearD * .02) { const Tb = nearD * .02 / Math.max(sp, 1e-12); this.per = Math.max(1, Math.min(8, Math.ceil(24 / (Tb * 60)))); this.fr = Math.max(3, Math.min(30, 1.5 / Tb)); this.setup(stars, sp > 0 ? g.clone().addScaledVector(vel, (24 / this.per + 2) / 60) : g); this.step = 0; } else return; }
+    if (this.step < 0) { if (this.fade < 1) return; const near = Math.max(1, Math.min(...(this.nebs || []).map(n => Math.max(n.R * .5, n.d - n.R)), 260, Infinity)); const out = g.length() - stars.G.R; const nearD = out > 0 ? Math.max(near, out * .6) : near; if (!this.last || this.last.distanceTo(g) > nearD * .02) { const Tb = nearD * .02 / Math.max(sp, 1e-12); this.per = Math.max(1, Math.min(2, Math.ceil(24 / (Tb * 60)))); this.fr = Math.max(3, this.per * 2.5); this.setup(stars, g); this.step = 0; } else return; }
     for (let k = 0; k < (this.per || 1) && this.step < 24; k++) this.tile(this.step++); if (this.step >= 24) { this.step = -1; this.finish(); }
   }
 }
