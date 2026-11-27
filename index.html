@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Afterlight</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23050409'/%3E%3Ccircle cx='8' cy='8' r='4' fill='none' stroke='%23ffc27a' stroke-width='2'/%3E%3C/svg%3E">
+  <script type="module" crossorigin src="./assets/index-C9dNZ6sH.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BEnmUnA8.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="place"><h2></h2><p></p><p id="fromstart"></p></div>
+  <div id="task"><b></b><span></span></div>
+  <div id="markers"></div>
+  <div id="reticle"><svg viewBox="-60 -60 120 120"><circle class="track" r="44"/><circle class="prog" r="44" pathLength="1"/><circle class="hull" r="52" pathLength="1"/></svg><i></i></div>
+  <div id="aim"></div>
+  <div id="hole"></div>
+  <div id="selbar"></div>
+  <div id="suit"></div>
+  <div id="grav"></div>
+  <div id="site"><i></i><span></span></div>
+  <div id="prograde"></div>
+  <div id="turn"></div>
+  <div id="tdir"><i></i></div>
+  <div id="near"></div>
+  <div id="energy"></div>
+  <div id="sheet"></div>
+  <div id="drive"><canvas id="dial"></canvas><div id="spent"></div></div>
+  <canvas id="radar"></canvas>
+  <div id="report"><h3></h3><dl></dl><p><kbd>Enter</kbd> close</p></div>
+  <div id="land"><kbd>G</kbd><span></span></div>
+  <div id="alt"><b></b><p></p></div>
+  <div id="clocks"></div>
+  <div id="speed"><p id="rel"></p><b>0</b><span>Throttle</span><em></em></div>
+  <div id="spectrum"></div><div id="speccap"></div>
+  <div id="keys"><kbd>Right mouse</kbd> turn <kbd>Shift</kbd> boost <kbd>X</kbd> brake <kbd>F</kbd> glide <kbd>[ ]</kbd> gear <kbd>M</kbd> galaxy <kbd>?</kbd> help</div>
+  <div id="banner"><h1></h1><p></p></div>
+  <div id="toast"></div>
+</div>
+<div id="map"><div id="nodes"></div><div id="maphead"><h2></h2><p></p></div><div id="mapbtn"><button class="alt" id="mYou">You</button><button class="alt" id="mGal">Galaxy</button><button class="alt" id="mUni">Universe</button></div><div id="mapinfo"></div><div id="maplights"></div><div id="mapfoot">Scroll to zoom into any spot · drag to turn · right-drag or WASD to move · click for details · double-click to set a waypoint <kbd>M</kbd> back</div></div>
+<div id="title">
+  <div>
+    <h1>Afterlight</h1>
+    <p>The galaxy is forgetting its light.<br>Gather seven colours of it, and carry them through the dark at its heart.</p>
+    <button id="begin">Begin</button><button id="again" hidden>Start a new galaxy</button>
+  </div>
+</div>
+<div id="pause" hidden><div><h1>Paused</h1><button id="resume">Resume</button><button id="pmap" class="alt">Galaxy map</button><button id="phelp" class="alt">Controls</button><button id="ptut" class="alt">Tutorial</button></div></div>
+<div id="tut" hidden><div class="box"><div id="tch"></div><div class="pic"></div><h2></h2><div class="txt"></div><div class="nav"><button id="tskip" class="alt">Close</button><span id="tnum"></span><div id="tdots"></div><button id="tback" class="alt">Back</button><button id="tnext">Next</button></div></div></div>
+<div id="help" hidden><div>
+  <h2>Flying</h2>
+  <dl>
+    <dt>Right mouse</dt><dd>Change course toward the cursor. Hold to keep following it. The ship first drifts on the old way; above cruise speed every turn costs speed, and 90° or more means a full stop. Arrow keys work too</dd>
+    <dt>W S</dt><dd>Throttle up and down</dd><dt>A D</dt><dd>Roll</dd>
+    <dt>Shift</dt><dd>Boost. Keep holding to go relativistic. You slow by yourself near any surface</dd>
+    <dt>X</dt><dd>Brake hard</dd>
+    <dt>Left drag</dt><dd>Look around without changing course</dd><dt>Double-click</dt><dd>Set what the cursor is on as waypoint. It stays, and an arrow points to it when it is out of view</dd><dt>T</dt><dd>Target what the cursor is on, press again to cycle</dd><dt>F</dt><dd>Glide to the target on autopilot</dd>
+    <dt>0 to 9</dt><dd>0 full stop, 1 cruise, 2 to 9 gears. Gears 2 and 3 run from 10 to 1000 km/s, 4 from 0.005 c to 0.9 c, and from 5 on every subgear adds a nine, up to 9.9 = c − 10⁻⁵¹ c. Same gear again: automatic. They also set the autopilot</dd>
+    <dt>[ ] or wheel</dt><dd>One subgear down or up, through all gears</dd>
+    <dt>Esc</dt><dd>Pause</dd>
+    <dt>Click the ground</dt><dd>Near a planet, even from orbit: choose a landing site. L lands there, L again cancels and clears it</dd><dt>G</dt><dd>Land right below, or take off</dd><dt>E</dt><dd>Go inside: you sit in the pilot capsule, which turns toward the gravity you feel. E again: outside view. Use the map table and the airlock with E</dd><dt>U</dt><dd>Unbuckle from or buckle into the capsule. In zero g you float: WASD, Space and X push you, Q and R roll. With gravity you stand where it presses you, the blue tube is a lift</dd>
+    <dt>L</dt><dd>Land at the chosen site. When landed: take off and climb to 0.7 of the planet’s diameter</dd><dt>Y</dt><dd>Escape a gravity field too strong to hold: turns away from it and burns out</dd><dt>K</dt><dd>Track the selected object: the ship keeps turning toward it</dd><dt>J</dt><dd>Match velocity with it: your speed and gears now count relative to it. Near planets this happens by itself</dd><dt>V</dt><dd>Relativistic view: what you would see, or what you would measure (pure length contraction)</dd>
+    <dt>C</dt><dd>Gaze: orbit the target, hands off</dd><dt>M</dt><dd>Map: zoom from the universe down to every single star</dd><dt>I</dt><dd>Data sheet of what the cursor is on, otherwise of the target</dd><dt>H</dt><dd>Hide the interface</dd><dt>N</dt><dd>Sound on / off</dd>
+  </dl>
+  <h2>The seven lights</h2><dl id="helplights"></dl><button id="closehelp">Back to flight</button><button id="htut" class="alt">Tutorial</button>
+</div></div>
+</body></html>
